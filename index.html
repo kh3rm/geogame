@@ -96,6 +96,7 @@
           <div id="collectionList" class="collection-list"></div>
         </section>
           <input id="backupFileInput" type="file" accept="application/json,.json" hidden />
+          <input id="creaturePackFileInput" type="file" accept="application/json,.json" hidden />
 
       </aside>
     </main>
@@ -127,7 +128,7 @@
       <div class="card-head compact admin-head">
         <div>
           <p class="eyebrow">Dold planering</p>
-          <h2 id="adminTitle">Promenadbyggare</h2>
+          <h2 id="adminTitle">Promenader</h2>
         </div>
         <button id="adminCloseBtn" class="ghost" type="button">Stäng</button>
       </div>
@@ -137,7 +138,7 @@
           <span aria-hidden="true">🗺️</span>
           <div>
             <strong>Adminläge</strong>
-            <p class="muted">Här byggs promenader med figurer som kan fångas i ett valt område. Skriv lösenordet för att öppna byggvyn.</p>
+            <p class="muted">Här byggs promenader med figurer. Skriv lösenordet för att öppna planeringen.</p>
           </div>
         </div>
         <form id="adminPasswordForm" class="admin-password-form">
@@ -150,109 +151,166 @@
         </form>
       </section>
 
-      <section id="adminBuilder" class="admin-builder hidden">
-        <div class="admin-toolbar">
-          <div class="admin-field grow">
-            <label for="adminScenarioSelect">Promenad</label>
-            <select id="adminScenarioSelect"></select>
+      <section id="adminHome" class="admin-home hidden">
+        <div class="admin-home-hero">
+          <div>
+            <p class="eyebrow">Promenader</p>
+            <h2>Välj eller skapa en runda</h2>
+            <p class="muted">Planera figurer på kartan, välj hur de ska visas och starta promenaden när det är dags.</p>
           </div>
-          <button id="adminNewScenarioBtn" type="button">Ny promenad</button>
-          <button id="adminActivateScenarioBtn" class="primary" type="button">Kör promenaden</button>
-          <button id="adminDeactivateScenarioBtn" type="button">Vanligt läge</button>
+          <button id="adminNewScenarioBtn" class="primary" type="button">+ Ny promenad</button>
+        </div>
+        <div id="adminWalkList" class="admin-walk-list"></div>
+
+        <details class="admin-pack-panel admin-pack-details">
+          <summary>
+            <span>
+              <strong>Figurpaket</strong>
+              <small id="adminCreaturePackStatus">3 standardfigurer</small>
+            </span>
+          </summary>
+          <div class="admin-pack-actions">
+            <button id="adminImportCreaturePackBtn" type="button">Importera paket</button>
+            <button id="adminDownloadCreaturePackTemplateBtn" type="button">Hämta mall</button>
+            <button id="adminResetCreaturePackBtn" class="ghost" type="button">Standard</button>
+          </div>
+          <p class="tiny">Importera en lokal JSON med egna namn, korta beskrivningar och bildreferenser. Bilder kan ligga som <code>imageData</code> eller som filer i <code>assets/creatures/</code>.</p>
+        </details>
+      </section>
+
+      <section id="adminScenarioPanel" class="admin-scenario-panel hidden">
+        <button id="adminBackToHomeBtn" class="ghost admin-back-btn" type="button">← Promenader</button>
+        <div class="admin-scenario-hero">
+          <div>
+            <p class="eyebrow">Vald promenad</p>
+            <h2 id="adminOpenScenarioTitle">Promenad</h2>
+            <p id="adminOpenScenarioDescription" class="muted">Ingen anteckning ännu.</p>
+            <p id="adminOpenScenarioMeta" class="tiny">0 figurer</p>
+          </div>
+          <span id="adminActivePill" class="count-pill">Ej aktiv</span>
         </div>
 
-        <div class="admin-editor-grid">
-          <div class="admin-left">
-            <div class="admin-cardlet">
-              <div class="card-head compact">
+        <div class="admin-field">
+          <label for="adminScenarioTitleInput">Namn</label>
+          <input id="adminScenarioTitleInput" type="text" maxlength="48" placeholder="Till exempel Parkrundan" />
+        </div>
+        <div class="admin-field">
+          <label for="adminScenarioDescriptionInput">Kort anteckning</label>
+          <textarea id="adminScenarioDescriptionInput" rows="2" maxlength="140" placeholder="Exempel: fem figurer runt lekparken och bron."></textarea>
+        </div>
+        <div class="admin-row-actions admin-scenario-actions">
+          <button id="adminRunScenarioBtn" class="primary" type="button">Kör promenad</button>
+          <button id="adminEditScenarioBtn" type="button">Redigera</button>
+          <button id="adminSaveScenarioBtn" type="button">Spara namn</button>
+          <button id="adminDuplicateScenarioBtn" type="button">Duplicera</button>
+          <button id="adminDeactivateScenarioBtn" type="button">Vanligt läge</button>
+          <button id="adminDeleteScenarioBtn" class="danger" type="button">Ta bort</button>
+        </div>
+        <p class="tiny">Kör promenad skapar en ny spelomgång, så samma planerade runda kan spelas igen utan att bryta regeln om en fångst per figur och omgång.</p>
+      </section>
+
+      <section id="adminEditor" class="admin-editor hidden">
+        <div class="admin-editor-topbar">
+          <button id="adminEditorBackBtn" class="ghost" type="button">← Tillbaka</button>
+          <div>
+            <p class="eyebrow">Redigera promenad</p>
+            <h2 id="adminEditorTitle">Promenad</h2>
+            <p id="adminEditorMeta" class="tiny">0 figurer · Sparat</p>
+          </div>
+          <button id="adminEditorDoneBtn" class="primary" type="button">Klar</button>
+        </div>
+
+        <div class="admin-editor-stage">
+          <aside class="admin-palette" aria-label="Figurer att placera">
+            <div class="admin-palette-head">
+              <strong>Figurer</strong>
+              <span id="adminSelectedName">Välj figur</span>
+            </div>
+            <div id="adminCreatureChoices" class="admin-creature-choices"></div>
+          </aside>
+
+          <div class="admin-map-column">
+            <div class="admin-map-wrap">
+              <div id="adminMap" class="admin-map" aria-label="Admin-karta för promenadplacering"></div>
+              <div class="admin-map-hint">
+                <strong id="adminMapHint">Välj figur</strong>
+                <span id="adminMapSubhint">Tryck på en figur till vänster och tryck sedan på kartan.</span>
+              </div>
+              <div class="admin-map-buttons">
+                <button id="adminUseLocationBtn" type="button">📍 Mig</button>
+                <button id="adminPlaceHereBtn" type="button">+ Här</button>
+                <button id="adminFitScenarioBtn" type="button">◎ Alla</button>
+              </div>
+              <div id="adminSpawnSheet" class="admin-spawn-sheet hidden" role="region" aria-live="polite">
                 <div>
-                  <p class="eyebrow">Scenario</p>
-                  <h2>Planera rundan</h2>
+                  <strong id="adminSheetTitle">Figur</strong>
+                  <span id="adminSheetMeta">Placerad på kartan</span>
                 </div>
-                <span id="adminActivePill" class="count-pill">Ej aktiv</span>
-              </div>
-              <div class="admin-field">
-                <label for="adminScenarioTitleInput">Namn</label>
-                <input id="adminScenarioTitleInput" type="text" maxlength="48" placeholder="Till exempel Parkrundan" />
-              </div>
-              <div class="admin-field">
-                <label for="adminScenarioDescriptionInput">Kort anteckning</label>
-                <textarea id="adminScenarioDescriptionInput" rows="2" maxlength="140" placeholder="Exempel: fem figurer runt lekparken och bron."></textarea>
-              </div>
-              <div class="admin-row-actions">
-                <button id="adminSaveScenarioBtn" type="button">Spara namn</button>
-                <button id="adminDeleteScenarioBtn" class="danger" type="button">Ta bort</button>
+                <button id="adminSheetMoveBtn" type="button">Flytta</button>
+                <button id="adminSheetRemoveBtn" class="danger" type="button">Ta bort</button>
+                <button id="adminSheetCloseBtn" class="ghost" type="button">Stäng</button>
               </div>
             </div>
+          </div>
+        </div>
 
-            <div class="admin-cardlet">
-              <p class="eyebrow">Figur</p>
-              <div id="adminCreatureChoices" class="admin-creature-choices"></div>
+        <div class="admin-placement-bar">
+          <div class="admin-field compact-field">
+            <label for="adminSpawnLabelInput">Ledtråd / platsnamn</label>
+            <input id="adminSpawnLabelInput" type="text" maxlength="60" placeholder="Frivilligt, till exempel bakom stora stenen" />
+          </div>
+          <div class="admin-slider-field compact-field">
+            <div class="admin-slider-head">
+              <label for="adminRadiusInput">Fångstavstånd</label>
+              <strong id="adminRadiusValue">65 m</strong>
+            </div>
+            <input id="adminRadiusInput" type="range" min="15" max="250" step="5" value="65" />
+          </div>
+          <button id="adminMoveCancelBtn" class="ghost hidden" type="button">Avbryt flytt</button>
+        </div>
+
+        <section class="admin-list-section">
+          <div class="admin-list-head">
+            <div>
+              <p class="eyebrow">Utplacerade figurer</p>
+              <h2><span id="adminScenarioCount">0</span> figurer</h2>
+              <p id="adminScenarioCaughtCount" class="tiny">0 fångade i aktiv omgång</p>
+            </div>
+            <div class="admin-reveal-toggle" role="group" aria-label="Visning under promenad">
+              <span>Visning</span>
+              <label><input id="adminRevealSequentialInput" name="adminRevealMode" type="radio" value="sequential" checked /> En i taget</label>
+              <label><input id="adminRevealAllInput" name="adminRevealMode" type="radio" value="all" /> Alla direkt</label>
+            </div>
+          </div>
+          <div id="adminSpawnList" class="admin-spawn-list"></div>
+
+          <details class="admin-tools-details">
+            <summary>Verktyg</summary>
+            <div class="admin-tools-grid">
               <div class="admin-field">
-                <label for="adminSpawnLabelInput">Platsnamn / ledtråd</label>
-                <input id="adminSpawnLabelInput" type="text" maxlength="60" placeholder="Till exempel Bakom stora stenen" />
+                <label for="adminCountInput">Antal vid auto</label>
+                <input id="adminCountInput" type="number" min="1" max="24" step="1" value="5" />
               </div>
-              <div class="admin-slider-field">
+              <div class="admin-slider-field compact">
                 <div class="admin-slider-head">
-                  <label for="adminRadiusInput">Fångstavstånd</label>
-                  <strong id="adminRadiusValue">65 m</strong>
+                  <label for="adminAreaInput">Spridningsområde</label>
+                  <strong id="adminAreaValue">180 m</strong>
                 </div>
-                <input id="adminRadiusInput" type="range" min="15" max="250" step="5" value="65" />
-                <p class="tiny">Hur nära spelaren behöver vara för att kunna öppna kamerafångsten.</p>
-              </div>
-              <div class="admin-two-fields">
-                <div class="admin-field">
-                  <label for="adminCountInput">Antal</label>
-                  <input id="adminCountInput" type="number" min="1" max="24" step="1" value="5" />
-                </div>
-                <div class="admin-slider-field compact">
-                  <div class="admin-slider-head">
-                    <label for="adminAreaInput">Spridningsområde</label>
-                    <strong id="adminAreaValue">180 m</strong>
-                  </div>
-                  <input id="adminAreaInput" type="range" min="30" max="900" step="10" value="180" />
-                </div>
+                <input id="adminAreaInput" type="range" min="30" max="900" step="10" value="180" />
               </div>
               <label class="admin-check">
                 <input id="adminMixCreaturesInput" type="checkbox" checked />
                 <span>Blanda figurer vid auto</span>
               </label>
-              <div class="admin-row-actions">
-                <button id="adminPlaceModeBtn" type="button">Placera på kartan</button>
-                <button id="adminAutoSpreadBtn" class="primary" type="button">Auto-sprid i området</button>
-              </div>
-              <p class="tiny">Placera manuellt genom att aktivera kartplacering och trycka på byggkartan. Auto-sprid använder kartans mitt och visar spridningsområdet tillfälligt.</p>
+              <button id="adminAutoSpreadBtn" type="button">Auto-sprid runt kartans mitt</button>
+              <button id="adminUseMapCenterBtn" type="button">Hämta huvudkartans mitt</button>
+              <button id="adminClearScenarioBtn" class="danger" type="button">Rensa alla figurer</button>
             </div>
-
-            <div class="admin-cardlet">
-              <p class="eyebrow">Snabbval</p>
-              <div class="admin-row-actions">
-                <button id="adminUseMapCenterBtn" type="button">Hämta huvudkartans mitt</button>
-                <button id="adminUseLocationBtn" type="button">Hämta min plats</button>
-                <button id="adminFitScenarioBtn" type="button">Visa alla figurer</button>
-                <button id="adminClearScenarioBtn" class="danger" type="button">Rensa figurer</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="admin-right">
-            <div class="admin-map-wrap">
-              <div id="adminMap" class="admin-map" aria-label="Admin-karta för promenadplacering"></div>
-              <div class="admin-map-hint">
-                <strong id="adminMapHint">Byggkarta</strong>
-                <span id="adminMapSubhint">Flytta kartan, välj figur och placera platser.</span>
-              </div>
-            </div>
-            <div class="admin-scenario-summary">
-              <div><strong id="adminScenarioCount">0</strong><span>Figurer</span></div>
-              <div><strong id="adminScenarioCaughtCount">0</strong><span>Redan fångade</span></div>
-              <div><strong id="adminScenarioRadius">65 m</strong><span>Fångstavstånd</span></div>
-            </div>
-            <div id="adminSpawnList" class="admin-spawn-list"></div>
-          </div>
-        </div>
-        <p id="adminStatus" class="tiny admin-status" aria-live="polite">Skapa en promenad, placera figurer och tryck sedan Kör promenaden.</p>
+          </details>
+        </section>
       </section>
+
+      <p id="adminStatus" class="tiny admin-status hidden" aria-live="polite">Välj eller skapa en promenad.</p>
     </div>
   </div>
 

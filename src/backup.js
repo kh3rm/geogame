@@ -184,6 +184,7 @@ export async function buildImportPreview(backup) {
   validateBackup(backup);
   const importedCatches = dedupeCatchesBySpawn(backup.data.catches);
   const importedSpawns = normalizeArray(backup.data.customSpawns);
+  const importedSettings = normalizeArray(backup.data.settings);
 
   const newCatches = [];
   const duplicateCatches = [];
@@ -195,6 +196,24 @@ export async function buildImportPreview(backup) {
   const localCatchIds = new Set(localCatches.map((record) => record.id));
   const localSpawnIds = new Set(localCatches.map((record) => record.spawnId).filter(Boolean));
   const seenImportedSpawnIds = new Set();
+
+  const importedScenarioSetting = importedSettings.find((setting) => setting?.key === 'adminScenarios');
+  const importedScenarios = normalizeAdminScenarios(importedScenarioSetting?.value);
+  const localScenarioSetting = await get('settings', 'adminScenarios');
+  const localScenarios = new Map(normalizeAdminScenarios(localScenarioSetting?.value).map((scenario) => [scenario.id, scenario]));
+  const scenariosToMerge = importedScenarios.filter((scenario) => {
+    const local = localScenarios.get(scenario.id);
+    return !local || recordTime(scenario) > recordTime(local);
+  }).length;
+
+  const importedCreatureSetting = importedSettings.find((setting) => setting?.key === 'customCreatures');
+  const importedCreatures = normalizeCustomCreatures(importedCreatureSetting?.value);
+  const localCreatureSetting = await get('settings', 'customCreatures');
+  const localCreatures = new Map(normalizeCustomCreatures(localCreatureSetting?.value).map((creature) => [creature.id, creature]));
+  const creaturesToMerge = importedCreatures.filter((creature) => {
+    const local = localCreatures.get(creature.id);
+    return !local || JSON.stringify(local) !== JSON.stringify(creature);
+  }).length;
 
   for (const record of importedCatches) {
     const spawnKey = record.spawnId || null;
@@ -227,7 +246,11 @@ export async function buildImportPreview(backup) {
     importedTotals: {
       catches: importedCatches.length,
       customSpawns: importedSpawns.length,
-      settings: normalizeArray(backup.data.settings).length,
+      settings: importedSettings.length,
+    },
+    settingsToMerge: {
+      scenarios: scenariosToMerge,
+      customCreatures: creaturesToMerge,
     },
   };
 }
@@ -265,13 +288,49 @@ async function mergeAdminScenarioSettings(importedSettings) {
   return changed;
 }
 
+function normalizeCustomCreatures(value) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((creature) => creature && typeof creature.id === 'string' && creature.id.length > 1);
+}
+
+async function mergeCustomCreatureSettings(importedSettings) {
+  const importedCreatureSetting = normalizeArray(importedSettings).find((setting) => setting?.key === 'customCreatures');
+  const importedCreatures = normalizeCustomCreatures(importedCreatureSetting?.value);
+  if (importedCreatures.length === 0) return 0;
+
+  const localSetting = await get('settings', 'customCreatures');
+  const byId = new Map(normalizeCustomCreatures(localSetting?.value).map((creature) => [creature.id, creature]));
+  let changed = 0;
+
+  for (const creature of importedCreatures) {
+    const existing = byId.get(creature.id);
+    if (!existing || JSON.stringify(existing) !== JSON.stringify(creature)) {
+      byId.set(creature.id, creature);
+      changed += 1;
+    }
+  }
+
+  if (changed > 0) {
+    await put('settings', {
+      key: 'customCreatures',
+      value: [...byId.values()],
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  return changed;
+}
+
 export async function mergeBackup(backup, preview = null) {
   validateBackup(backup);
   const diff = preview ?? await buildImportPreview(backup);
 
   const catchesToAdd = diff.newCatches;
   const spawnsToPut = [...diff.newSpawns, ...diff.updatedSpawns];
-  const scenariosMerged = await mergeAdminScenarioSettings(backup.data.settings);
+  const [scenariosMerged, creaturesMerged] = await Promise.all([
+    mergeAdminScenarioSettings(backup.data.settings),
+    mergeCustomCreatureSettings(backup.data.settings),
+  ]);
 
   await Promise.all([
     catchesToAdd.length ? putMany('catches', catchesToAdd) : Promise.resolve(),
@@ -290,6 +349,7 @@ export async function mergeBackup(backup, preview = null) {
     spawnsAdded: diff.newSpawns.length,
     spawnsUpdated: diff.updatedSpawns.length,
     scenariosMerged,
+    creaturesMerged,
     catchesSkipped: diff.duplicateCatches.length,
   };
 }

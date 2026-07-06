@@ -1,4 +1,5 @@
 import { saveCatch } from './db.js';
+import { getCreatureImageSource } from './creatures.js';
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -75,6 +76,54 @@ function drawCreatureShape(PIXI, creature, options = {}) {
   root.body = body;
   root.sparkle = sparkle;
   return root;
+}
+
+async function makeCreatureDisplay(PIXI, creature) {
+  const imageSrc = getCreatureImageSource(creature);
+  if (imageSrc) {
+    try {
+      const texture = await PIXI.Assets.load(imageSrc);
+      const root = new PIXI.Container();
+      root.label = 'creature-root-image';
+
+      const shadow = new PIXI.Graphics()
+        .ellipse(0, 76, 70, 18)
+        .fill({ color: creature.shadow, alpha: 0.34 });
+      const glow = new PIXI.Graphics()
+        .roundRect(-68, -62, 136, 132, 38)
+        .fill({ color: creature.color, alpha: 0.16 })
+        .stroke({ color: creature.accent, width: 2, alpha: 0.32 });
+      const sprite = new PIXI.Sprite(texture);
+      sprite.anchor.set(0.5);
+      const width = texture.width || texture.orig?.width || 120;
+      const height = texture.height || texture.orig?.height || 120;
+      const maxSide = Math.max(width, height, 1);
+      sprite.scale.set(122 / maxSide);
+
+      const sparkle = new PIXI.Graphics()
+        .moveTo(0, -9)
+        .lineTo(3, -3)
+        .lineTo(9, 0)
+        .lineTo(3, 3)
+        .lineTo(0, 9)
+        .lineTo(-3, 3)
+        .lineTo(-9, 0)
+        .lineTo(-3, -3)
+        .closePath()
+        .fill({ color: creature.accent, alpha: 0.92 });
+      sparkle.x = 55;
+      sparkle.y = -54;
+
+      root.addChild(shadow, glow, sprite, sparkle);
+      root.shadow = shadow;
+      root.body = sprite;
+      root.sparkle = sparkle;
+      return root;
+    } catch (error) {
+      console.warn('Kunde inte ladda figurbild, använder ritad fallback:', imageSrc, error);
+    }
+  }
+  return drawCreatureShape(PIXI, creature);
 }
 
 function makeRing(PIXI, radius, color, width = 3, alpha = 0.8) {
@@ -226,7 +275,7 @@ export class EncounterController {
 
     this.portal = new PIXI.Container();
     this.portal.label = 'scanner-portal';
-    this.creatureRoot = drawCreatureShape(PIXI, this.creature);
+    this.creatureRoot = await makeCreatureDisplay(PIXI, this.creature);
     this.creatureRoot.scale.set(0.01);
     this.creatureRoot.alpha = 0;
 
@@ -612,6 +661,10 @@ export class EncounterController {
     this.el.confirmText.textContent = `${this.creature.name} fångad!`;
     this.el.confirmCreature.style.setProperty('--creature-color', colorToHex(this.creature.color));
     this.el.confirmCreature.style.setProperty('--creature-accent', colorToHex(this.creature.accent));
+    const imageSrc = getCreatureImageSource(this.creature);
+    this.el.confirmCreature.classList.toggle('has-creature-image', Boolean(imageSrc));
+    if (imageSrc) this.el.confirmCreature.style.setProperty('--creature-image', `url(${JSON.stringify(imageSrc)})`);
+    else this.el.confirmCreature.style.removeProperty('--creature-image');
     this.el.confirm.classList.remove('hidden');
   }
 

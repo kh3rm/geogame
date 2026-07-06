@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.7.0';
+export const APP_VERSION = '0.9.0';
 
 export const DEFAULT_CENTER = {
   // Umeå, Sweden: a neutral default for a Swedish test map.

@@ -1,0 +1,18 @@
+{
+  "app": "geocritter-creature-pack",
+  "packVersion": 1,
+  "title": "Mitt figurpaket",
+  "notes": "Lägg egna bildfiler i assets/creatures/ eller använd små data:image/... base64-bilder i imageData.",
+  "creatures": [
+    {
+      "id": "min-figur-1",
+      "name": "Min figur",
+      "rarity": "Vanlig",
+      "description": "En kort, barnvänlig beskrivning som visas i samlingen.",
+      "imagePath": "./assets/creatures/min-figur-1.png",
+      "color": "#83e6a1",
+      "accent": "#d5ffe6",
+      "shadow": "#092016"
+    }
+  ]
+}
