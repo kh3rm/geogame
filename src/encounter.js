@@ -634,6 +634,9 @@ export class EncounterController {
       updatedAt: new Date().toISOString(),
       lat: this.position?.lat ?? null,
       lng: this.position?.lng ?? null,
+      spawnLat: this.spawn?.lat ?? null,
+      spawnLng: this.spawn?.lng ?? null,
+      radiusM: this.spawn?.radiusM ?? null,
     };
     const savedCatch = await saveCatch(catchRecord);
     const onComplete = this.onComplete;

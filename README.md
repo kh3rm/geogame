@@ -10,7 +10,10 @@ En liten, statisk PWA-prototyp för geoplacerad figurjakt. Projektet är byggt f
 - IndexedDB för lokala fångster, egna testzoner och backupflöde
 - PWA-manifest och service worker
 - JSON-backup med delning/nedladdning/import
+- Diskret backupmeny direkt under kartan
 - Svenskt gränssnitt
+- Samlingskort med samma figuridentitet som i kamerafångsten
+- Detaljvy för tidigare fångster med karta
 
 ## Testa lokalt
 
@@ -51,11 +54,13 @@ Från v0.4 gäller:
 
 ## Backup och manuell telefon-till-telefon-sammanfogning
 
-Använd **Dela backup** för att skapa en liten JSON-sparfil och dela den via telefonens delningsmeny, till exempel Mail, Meddelanden, Drive eller AirDrop. Om fildelning inte stöds laddas samma JSON-fil ned i stället.
+Backupmenyn ligger nu diskret nere till vänster i kartvyn bakom 💾 **Backup**. Tryck där för att öppna alternativen.
 
-Använd **Ladda ned JSON** om du uttryckligen vill spara filen lokalt.
+Använd **Dela** för att skapa en liten JSON-sparfil och dela den via telefonens delningsmeny, till exempel Mail, Meddelanden, Drive eller AirDrop. Om fildelning inte stöds laddas samma JSON-fil ned i stället.
 
-Använd **Importera backup** för att välja en `geocritter-save-....json`-fil. Appen validerar filen och visar en granskning innan IndexedDB ändras.
+Använd **Ladda ned** om du uttryckligen vill spara filen lokalt.
+
+Använd **Importera** för att välja en `geocritter-save-....json`-fil. Appen validerar filen och visar en granskning innan IndexedDB ändras.
 
 Sammanfoga:
 
@@ -78,6 +83,20 @@ Ersätt lokal sparfil:
 4. Välj **Deploy from branch**.
 5. Välj `main` och `/root`.
 6. Öppna den publicerade Pages-adressen på mobilen.
+
+## Samling och detaljvy
+
+Listan **Fångade figurer** visar en liten bild av varje fångad figur. Bilden bygger på samma `creatureId`, färger och formprinciper som kamerafångsten och fångstbekräftelsen, så att figuren inte glider ur synk mellan vyerna.
+
+Tryck på en tidigare fångst för att öppna ett minimalistiskt fångstkort med:
+
+- större figurvy
+- namn och beskrivning
+- tidpunkt
+- zon/plats
+- karta centrerad på fångstzonen
+
+Äldre fångster utan sparad zonposition försöker falla tillbaka till zonens position i aktuell appdata.
 
 ## Projektstruktur
 
@@ -102,3 +121,4 @@ src/geo.js                 Avstånd och signalstyrka
 - v0.2: JSON-backup, delning/import, merge/replace.
 - v0.3: aktivt virvlande kamerafångstläge.
 - v0.4: svenskt gränssnitt, fem direkta träffar krävs, en fångst per zon, tresekunders fångstbekräftelse.
+- v0.5: diskret backupknapp under kartan, figurminiatyrer i samlingen, konsekvent figuridentitet och detaljvy med karta.

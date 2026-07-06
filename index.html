@@ -31,6 +31,26 @@
         <div class="map-overlay">
           <div id="statusPill" class="status-pill">Startar…</div>
         </div>
+        <div class="backup-fab-wrap">
+          <button id="backupToggleBtn" class="backup-fab" type="button" aria-expanded="false" aria-controls="backupMenuPanel" aria-label="Öppna backupmeny">
+            <span aria-hidden="true">💾</span>
+            <span>Backup</span>
+          </button>
+          <div id="backupMenuPanel" class="backup-menu hidden" role="region" aria-label="Backup och återställning">
+            <div class="backup-menu-head">
+              <div>
+                <p class="eyebrow">Backup</p>
+                <h2>Spara & återställ</h2>
+              </div>
+            </div>
+            <p class="tiny">Dela eller ladda ned en JSON-sparfil. Import kan sammanfoga saknade fångster utan att radera något.</p>
+            <div class="backup-menu-actions">
+              <button id="shareBackupBtn" type="button">Dela</button>
+              <button id="downloadBackupBtn" type="button">Ladda ned</button>
+              <button id="importBackupBtn" type="button">Importera</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <aside class="panel control-panel">
@@ -68,23 +88,8 @@
           </div>
           <div id="collectionList" class="collection-list"></div>
         </section>
-
-        <section class="card backup-card">
-          <div class="card-head compact">
-            <div>
-              <p class="eyebrow">Backup</p>
-              <h2>Spara & återställ</h2>
-            </div>
-          </div>
-          <p class="muted">Exportera en liten JSON-sparfil, dela den via mejl/delningsmenyn eller importera en annan telefons backup säkert.</p>
-          <div class="button-grid backup-actions">
-            <button id="shareBackupBtn" type="button">Dela backup</button>
-            <button id="downloadBackupBtn" type="button">Ladda ned JSON</button>
-            <button id="importBackupBtn" type="button">Importera backup</button>
-          </div>
-          <p class="tiny">Sammanfoga lägger bara till saknade fångster. Ersätt finns vid import om man flyttar till en ny telefon.</p>
           <input id="backupFileInput" type="file" accept="application/json,.json" hidden />
-        </section>
+
       </aside>
     </main>
   </div>
@@ -106,6 +111,28 @@
         <button id="restoreCancelBtn" class="ghost" type="button">Avbryt</button>
       </div>
       <p class="tiny">Sammanfoga raderar aldrig fångster som redan finns på telefonen. Ersätt skriver över den lokala sparfilen efter en extra bekräftelse.</p>
+    </div>
+  </div>
+
+  <div id="catchDetailModal" class="modal hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="catchDetailTitle">
+    <div class="modal-card catch-detail-card">
+      <div class="card-head compact">
+        <div>
+          <p class="eyebrow">Fångstkort</p>
+          <h2 id="catchDetailTitle">Fångad figur</h2>
+        </div>
+        <button id="catchDetailCloseBtn" class="ghost" type="button">Stäng</button>
+      </div>
+      <div class="catch-detail-hero">
+        <div id="catchDetailAvatar" class="creature-avatar large" aria-hidden="true"></div>
+        <div>
+          <strong id="catchDetailName">Figur</strong>
+          <p id="catchDetailDescription" class="muted">Detaljer om fångsten.</p>
+        </div>
+      </div>
+      <div id="catchDetailMeta" class="catch-detail-meta"></div>
+      <div id="catchDetailMap" class="catch-detail-map" aria-label="Karta över fångstplats"></div>
+      <p id="catchDetailLocation" class="tiny"></p>
     </div>
   </div>
 

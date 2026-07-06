@@ -19,6 +19,8 @@ const els = {
   spawnHereBtn: $('spawnHereBtn'),
   simulateBtn: $('simulateBtn'),
   resetBtn: $('resetBtn'),
+  backupToggleBtn: $('backupToggleBtn'),
+  backupMenuPanel: $('backupMenuPanel'),
   shareBackupBtn: $('shareBackupBtn'),
   downloadBackupBtn: $('downloadBackupBtn'),
   importBackupBtn: $('importBackupBtn'),
@@ -34,6 +36,17 @@ const els = {
     cancelBtn: $('restoreCancelBtn'),
     mergeBtn: $('restoreMergeBtn'),
     replaceBtn: $('restoreReplaceBtn'),
+  },
+  detail: {
+    modal: $('catchDetailModal'),
+    closeBtn: $('catchDetailCloseBtn'),
+    title: $('catchDetailTitle'),
+    avatar: $('catchDetailAvatar'),
+    name: $('catchDetailName'),
+    description: $('catchDetailDescription'),
+    meta: $('catchDetailMeta'),
+    map: $('catchDetailMap'),
+    location: $('catchDetailLocation'),
   },
   encounter: {
     layer: $('encounterLayer'),
@@ -68,6 +81,8 @@ const state = {
   watchId: null,
   deferredInstallPrompt: null,
   pendingRestore: null,
+  detailMap: null,
+  detailMarker: null,
 };
 
 const encounter = new EncounterController(els.encounter);
@@ -98,26 +113,71 @@ function formatDateTime(value) {
 
 function getCatchDisplay(record) {
   const creature = getCreature(record.creatureId);
+  const spawn = state.spawns.find((item) => item.id === record.spawnId);
   return {
+    creature,
     name: record.creatureName || creature.name || record.creatureId || 'Okänd figur',
     rarity: record.rarity || creature.rarity || 'Okänd',
     caughtAt: formatDateTime(record.caughtAt),
-    spawnLabel: record.spawnLabel || record.spawnId || 'Okänd zon',
+    spawnLabel: record.spawnLabel || spawn?.label || record.spawnId || 'Okänd zon',
+    description: creature.description || 'En mystisk liten figur fångad i skannern.',
   };
 }
 
-function makeCatchCard(record, { includeZone = false } = {}) {
+function colorToCss(color) {
+  return `#${Number(color).toString(16).padStart(6, '0')}`;
+}
+
+function applyCreatureStyle(element, creature) {
+  element.style.setProperty('--creature-color', colorToCss(creature.color));
+  element.style.setProperty('--creature-accent', colorToCss(creature.accent));
+  element.style.setProperty('--creature-shadow', colorToCss(creature.shadow));
+  element.dataset.creature = creature.id;
+}
+
+function makeCreatureAvatar(creature, className = '') {
+  const avatar = document.createElement('div');
+  avatar.className = `creature-avatar ${className}`.trim();
+  avatar.setAttribute('aria-hidden', 'true');
+  applyCreatureStyle(avatar, creature);
+  return avatar;
+}
+
+function getCatchLocation(record) {
+  const spawn = state.spawns.find((item) => item.id === record.spawnId);
+  const lat = Number(record.spawnLat ?? spawn?.lat ?? record.lat);
+  const lng = Number(record.spawnLng ?? spawn?.lng ?? record.lng);
+  const radiusM = Number(record.radiusM ?? spawn?.radiusM ?? 0);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng, radiusM, spawn };
+}
+
+function makeCatchCard(record, { includeZone = false, interactive = false } = {}) {
   const display = getCatchDisplay(record);
   const item = document.createElement('article');
-  item.className = 'catch-card';
-  item.innerHTML = `
-    <div class="catch-icon" aria-hidden="true"></div>
-    <div>
-      <strong>${escapeHtml(display.name)}</strong>
-      <span>${escapeHtml(display.rarity)} · ${escapeHtml(display.caughtAt)}</span>
-      ${includeZone ? `<span>${escapeHtml(display.spawnLabel)}</span>` : ''}
-    </div>
+  item.className = interactive ? 'catch-card catch-card-clickable' : 'catch-card';
+  if (interactive) {
+    item.tabIndex = 0;
+    item.setAttribute('role', 'button');
+    item.setAttribute('aria-label', `Visa fångst: ${display.name}`);
+  }
+  const avatar = makeCreatureAvatar(display.creature, 'small');
+  const text = document.createElement('div');
+  text.innerHTML = `
+    <strong>${escapeHtml(display.name)}</strong>
+    <span>${escapeHtml(display.rarity)} · ${escapeHtml(display.caughtAt)}</span>
+    ${includeZone ? `<span>${escapeHtml(display.spawnLabel)}</span>` : ''}
   `;
+  item.append(avatar, text);
+  if (interactive) {
+    item.addEventListener('click', () => openCatchDetail(record));
+    item.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openCatchDetail(record);
+      }
+    });
+  }
   return item;
 }
 
@@ -365,9 +425,90 @@ function renderCollection() {
   }
 
   els.collectionList.innerHTML = '';
-  for (const record of state.catches.slice(0, 8)) {
-    els.collectionList.appendChild(makeCatchCard(record));
+  for (const record of state.catches.slice(0, 12)) {
+    els.collectionList.appendChild(makeCatchCard(record, { includeZone: true, interactive: true }));
   }
+
+  if (state.catches.length > 12) {
+    const note = document.createElement('p');
+    note.className = 'tiny';
+    note.textContent = `Visar 12 av ${state.catches.length} fångster.`;
+    els.collectionList.appendChild(note);
+  }
+}
+
+function closeCatchDetail() {
+  els.detail.modal.classList.add('hidden');
+  els.detail.modal.setAttribute('aria-hidden', 'true');
+}
+
+function openCatchDetail(record) {
+  const display = getCatchDisplay(record);
+  const location = getCatchLocation(record);
+
+  els.detail.title.textContent = `${display.name} fångad`;
+  els.detail.name.textContent = display.name;
+  els.detail.description.textContent = display.description;
+  els.detail.avatar.className = 'creature-avatar large';
+  applyCreatureStyle(els.detail.avatar, display.creature);
+
+  els.detail.meta.innerHTML = `
+    <div><span>Typ</span><strong>${escapeHtml(display.rarity)}</strong></div>
+    <div><span>Fångad</span><strong>${escapeHtml(display.caughtAt)}</strong></div>
+    <div><span>Plats</span><strong>${escapeHtml(display.spawnLabel)}</strong></div>
+  `;
+
+  if (location) {
+    els.detail.location.textContent = `Position: ${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}${location.radiusM ? ` · zonradie ${Math.round(location.radiusM)} m` : ''}`;
+  } else {
+    els.detail.location.textContent = 'Ingen sparad position för denna äldre fångst.';
+  }
+
+  els.detail.modal.classList.remove('hidden');
+  els.detail.modal.setAttribute('aria-hidden', 'false');
+
+  setTimeout(() => {
+    if (!window.L || !location) {
+      els.detail.map.innerHTML = '<div class="map-empty">Ingen kartposition sparad</div>';
+      return;
+    }
+
+    if (!state.detailMap) {
+      state.detailMap = L.map(els.detail.map, {
+        zoomControl: false,
+        attributionControl: true,
+        dragging: true,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+      });
+      L.tileLayer(TILE_LAYER.url, { maxZoom: TILE_LAYER.maxZoom, attribution: TILE_LAYER.attribution }).addTo(state.detailMap);
+    }
+
+    const latLng = [location.lat, location.lng];
+    state.detailMap.setView(latLng, 17);
+    if (state.detailMarker) {
+      state.detailMarker.marker.remove();
+      state.detailMarker.circle?.remove();
+    }
+    const circle = location.radiusM
+      ? L.circle(latLng, {
+          radius: location.radiusM,
+          color: '#9ff6ce',
+          fillColor: '#9ff6ce',
+          fillOpacity: 0.12,
+          weight: 2,
+        }).addTo(state.detailMap)
+      : null;
+    const marker = L.circleMarker(latLng, {
+      radius: 9,
+      color: '#ffffff',
+      fillColor: colorToCss(display.creature.color),
+      fillOpacity: 1,
+      weight: 2,
+    }).addTo(state.detailMap);
+    state.detailMarker = { marker, circle };
+    state.detailMap.invalidateSize();
+  }, 60);
 }
 
 function requestLocation() {
@@ -465,6 +606,16 @@ async function refreshAfterRestore() {
   updateNearest();
 }
 
+function toggleBackupMenu(forceOpen = null) {
+  const shouldOpen = forceOpen ?? els.backupMenuPanel.classList.contains('hidden');
+  els.backupMenuPanel.classList.toggle('hidden', !shouldOpen);
+  els.backupToggleBtn.setAttribute('aria-expanded', String(shouldOpen));
+}
+
+function closeBackupMenu() {
+  toggleBackupMenu(false);
+}
+
 function closeRestoreModal() {
   state.pendingRestore = null;
   els.restore.modal.classList.add('hidden');
@@ -518,6 +669,7 @@ function renderRestoreModal(backup, preview) {
 }
 
 async function handleShareBackup() {
+  closeBackupMenu();
   try {
     const result = await shareBackup();
     if (result.reason === 'cancelled') setStatus('Delning av backup avbröts');
@@ -530,6 +682,7 @@ async function handleShareBackup() {
 }
 
 async function handleDownloadBackup() {
+  closeBackupMenu();
   try {
     await downloadBackup();
     setStatus('Backup laddades ned');
@@ -540,6 +693,7 @@ async function handleDownloadBackup() {
 }
 
 async function handleImportBackup() {
+  closeBackupMenu();
   try {
     const file = await chooseBackupFile();
     if (!file) return;
@@ -612,6 +766,12 @@ function setupEvents() {
   els.spawnHereBtn.addEventListener('click', spawnHere);
   els.simulateBtn.addEventListener('click', simulateNear);
   els.resetBtn.addEventListener('click', resetCatches);
+  els.backupToggleBtn.addEventListener('click', (event) => {
+    event.stopPropagation();
+    toggleBackupMenu();
+  });
+  els.backupMenuPanel.addEventListener('click', (event) => event.stopPropagation());
+  document.addEventListener('click', closeBackupMenu);
   els.shareBackupBtn.addEventListener('click', handleShareBackup);
   els.downloadBackupBtn.addEventListener('click', handleDownloadBackup);
   els.importBackupBtn.addEventListener('click', handleImportBackup);
@@ -619,6 +779,10 @@ function setupEvents() {
   els.restore.cancelBtn.addEventListener('click', closeRestoreModal);
   els.restore.mergeBtn.addEventListener('click', applyMergeRestore);
   els.restore.replaceBtn.addEventListener('click', applyReplaceRestore);
+  els.detail.closeBtn.addEventListener('click', closeCatchDetail);
+  els.detail.modal.addEventListener('click', (event) => {
+    if (event.target === els.detail.modal) closeCatchDetail();
+  });
   els.encounterBtn.addEventListener('click', openEncounter);
   els.encounter.closeBtn.addEventListener('click', () => encounter.stop());
   els.encounter.pulseBtn.addEventListener('click', () => encounter.pulseFromButton());
