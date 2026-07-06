@@ -1,6 +1,7 @@
 import { APP_VERSION, DEFAULT_CENTER, DEFAULT_SPAWNS, TILE_LAYER } from './config.js';
 import { CREATURES, getCreature } from './creatures.js';
 import { getAll, saveCustomSpawn, clear } from './db.js';
+import { buildImportPreview, downloadBackup, mergeBackup, parseBackupFile, replaceBackup, shareBackup } from './backup.js';
 import { distanceMeters, formatDistance, signalFromDistance, randomOffsetLatLng } from './geo.js';
 import { EncounterController } from './encounter.js';
 
@@ -18,9 +19,22 @@ const els = {
   spawnHereBtn: $('spawnHereBtn'),
   simulateBtn: $('simulateBtn'),
   resetBtn: $('resetBtn'),
+  shareBackupBtn: $('shareBackupBtn'),
+  downloadBackupBtn: $('downloadBackupBtn'),
+  importBackupBtn: $('importBackupBtn'),
+  backupFileInput: $('backupFileInput'),
   installBtn: $('installBtn'),
   collectionList: $('collectionList'),
   catchCount: $('catchCount'),
+  restore: {
+    modal: $('restoreModal'),
+    summary: $('restoreSummary'),
+    catchList: $('restoreCatchList'),
+    closeBtn: $('restoreCloseBtn'),
+    cancelBtn: $('restoreCancelBtn'),
+    mergeBtn: $('restoreMergeBtn'),
+    replaceBtn: $('restoreReplaceBtn'),
+  },
   encounter: {
     layer: $('encounterLayer'),
     video: $('cameraVideo'),
@@ -50,6 +64,7 @@ const state = {
   simulated: false,
   watchId: null,
   deferredInstallPrompt: null,
+  pendingRestore: null,
 };
 
 const encounter = new EncounterController(els.encounter);
@@ -61,6 +76,46 @@ function randomCreatureId() {
 
 function setStatus(message) {
   els.statusPill.textContent = message;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('\"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function formatDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Unknown time';
+  return date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function getCatchDisplay(record) {
+  const creature = getCreature(record.creatureId);
+  return {
+    name: record.creatureName || creature.name || record.creatureId || 'Unknown creature',
+    rarity: record.rarity || creature.rarity || 'Unknown',
+    caughtAt: formatDateTime(record.caughtAt),
+    spawnLabel: record.spawnLabel || record.spawnId || 'Unknown zone',
+  };
+}
+
+function makeCatchCard(record, { includeZone = false } = {}) {
+  const display = getCatchDisplay(record);
+  const item = document.createElement('article');
+  item.className = 'catch-card';
+  item.innerHTML = `
+    <div class="catch-icon" aria-hidden="true"></div>
+    <div>
+      <strong>${escapeHtml(display.name)}</strong>
+      <span>${escapeHtml(display.rarity)} · ${escapeHtml(display.caughtAt)}</span>
+      ${includeZone ? `<span>${escapeHtml(display.spawnLabel)}</span>` : ''}
+    </div>
+  `;
+  return item;
 }
 
 function initMap() {
@@ -256,17 +311,7 @@ function renderCollection() {
 
   els.collectionList.innerHTML = '';
   for (const record of state.catches.slice(0, 8)) {
-    const item = document.createElement('article');
-    item.className = 'catch-card';
-    const caughtDate = new Date(record.caughtAt);
-    item.innerHTML = `
-      <div class="catch-icon" aria-hidden="true"></div>
-      <div>
-        <strong>${record.creatureName}</strong>
-        <span>${record.rarity} · ${caughtDate.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
-      </div>
-    `;
-    els.collectionList.appendChild(item);
+    els.collectionList.appendChild(makeCatchCard(record));
   }
 }
 
@@ -321,14 +366,15 @@ async function spawnHere() {
     ...randomOffsetLatLng(base, 8),
     radiusM: 65,
     source: 'custom',
+    updatedAt: new Date().toISOString(),
   };
-  await saveCustomSpawn(spawn);
-  state.spawns.push(spawn);
-  state.selectedSpawnId = spawn.id;
+  const savedSpawn = await saveCustomSpawn(spawn);
+  state.spawns.push(savedSpawn);
+  state.selectedSpawnId = savedSpawn.id;
   renderSpawns();
   if (!state.position) updateUserPosition(base, { simulated: true });
   updateNearest();
-  state.map?.setView([spawn.lat, spawn.lng], 18);
+  state.map?.setView([savedSpawn.lat, savedSpawn.lng], 18);
 }
 
 function simulateNear() {
@@ -345,6 +391,137 @@ async function resetCatches() {
   state.catches = [];
   renderCollection();
   setStatus('Catches reset');
+}
+
+function chooseBackupFile() {
+  return new Promise((resolve) => {
+    els.backupFileInput.value = '';
+    els.backupFileInput.onchange = () => resolve(els.backupFileInput.files?.[0] ?? null);
+    els.backupFileInput.click();
+  });
+}
+
+async function refreshAfterRestore() {
+  await loadLocalData();
+  renderSpawns();
+  renderCollection();
+  updateNearest();
+}
+
+function closeRestoreModal() {
+  state.pendingRestore = null;
+  els.restore.modal.classList.add('hidden');
+  els.restore.modal.setAttribute('aria-hidden', 'true');
+}
+
+function renderRestoreModal(backup, preview) {
+  state.pendingRestore = { backup, preview };
+
+  const exported = preview.exportedAt ? formatDateTime(preview.exportedAt) : 'Unknown';
+  const changes = preview.newCatches.length + preview.newSpawns.length + preview.updatedSpawns.length;
+
+  els.restore.summary.innerHTML = `
+    <div class="restore-stat"><strong>${preview.newCatches.length}</strong><span>New catches to add</span></div>
+    <div class="restore-stat"><strong>${preview.duplicateCatches.length}</strong><span>Already on this phone</span></div>
+    <div class="restore-stat"><strong>${preview.newSpawns.length + preview.updatedSpawns.length}</strong><span>Custom zones to add/update</span></div>
+  `;
+
+  els.restore.catchList.innerHTML = '';
+  if (preview.newCatches.length === 0) {
+    const note = document.createElement('p');
+    note.className = 'restore-note';
+    note.textContent = `No new catches were found in this backup. Exported: ${exported}.`;
+    els.restore.catchList.appendChild(note);
+  } else {
+    const note = document.createElement('p');
+    note.className = 'restore-note';
+    note.textContent = `Backup exported ${exported}. Review the new catches below before adding them to this phone.`;
+    els.restore.catchList.appendChild(note);
+
+    for (const record of preview.newCatches.slice(0, 30)) {
+      els.restore.catchList.appendChild(makeCatchCard(record, { includeZone: true }));
+    }
+
+    if (preview.newCatches.length > 30) {
+      const more = document.createElement('p');
+      more.className = 'tiny';
+      more.textContent = `Showing 30 of ${preview.newCatches.length} new catches. All new catches will be added if you confirm.`;
+      els.restore.catchList.appendChild(more);
+    }
+  }
+
+  els.restore.mergeBtn.textContent = changes === 0
+    ? 'Nothing new to add'
+    : preview.newCatches.length > 0
+      ? `Add ${preview.newCatches.length} catches`
+      : 'Apply zone updates';
+  els.restore.mergeBtn.disabled = changes === 0;
+  els.restore.modal.classList.remove('hidden');
+  els.restore.modal.setAttribute('aria-hidden', 'false');
+}
+
+async function handleShareBackup() {
+  try {
+    const result = await shareBackup();
+    if (result.reason === 'cancelled') setStatus('Backup sharing cancelled');
+    else if (result.method === 'download') setStatus('Share unavailable — backup downloaded');
+    else setStatus('Backup ready to share');
+  } catch (error) {
+    console.error(error);
+    setStatus('Backup share failed');
+  }
+}
+
+async function handleDownloadBackup() {
+  try {
+    await downloadBackup();
+    setStatus('Backup downloaded');
+  } catch (error) {
+    console.error(error);
+    setStatus('Backup download failed');
+  }
+}
+
+async function handleImportBackup() {
+  try {
+    const file = await chooseBackupFile();
+    if (!file) return;
+    const backup = await parseBackupFile(file);
+    const preview = await buildImportPreview(backup);
+    renderRestoreModal(backup, preview);
+  } catch (error) {
+    console.error(error);
+    setStatus(error.message || 'Could not import backup');
+  }
+}
+
+async function applyMergeRestore() {
+  if (!state.pendingRestore) return;
+  try {
+    const result = await mergeBackup(state.pendingRestore.backup, state.pendingRestore.preview);
+    await refreshAfterRestore();
+    closeRestoreModal();
+    setStatus(`Added ${result.catchesAdded} catches`);
+  } catch (error) {
+    console.error(error);
+    setStatus(error.message || 'Merge restore failed');
+  }
+}
+
+async function applyReplaceRestore() {
+  if (!state.pendingRestore) return;
+  const ok = window.confirm('Replace local save? This deletes the catches and custom zones on this phone, then restores the selected backup.');
+  if (!ok) return;
+
+  try {
+    const result = await replaceBackup(state.pendingRestore.backup);
+    await refreshAfterRestore();
+    closeRestoreModal();
+    setStatus(`Restored ${result.catchesRestored} catches`);
+  } catch (error) {
+    console.error(error);
+    setStatus(error.message || 'Replace restore failed');
+  }
 }
 
 async function openEncounter() {
@@ -368,6 +545,13 @@ function setupEvents() {
   els.spawnHereBtn.addEventListener('click', spawnHere);
   els.simulateBtn.addEventListener('click', simulateNear);
   els.resetBtn.addEventListener('click', resetCatches);
+  els.shareBackupBtn.addEventListener('click', handleShareBackup);
+  els.downloadBackupBtn.addEventListener('click', handleDownloadBackup);
+  els.importBackupBtn.addEventListener('click', handleImportBackup);
+  els.restore.closeBtn.addEventListener('click', closeRestoreModal);
+  els.restore.cancelBtn.addEventListener('click', closeRestoreModal);
+  els.restore.mergeBtn.addEventListener('click', applyMergeRestore);
+  els.restore.replaceBtn.addEventListener('click', applyReplaceRestore);
   els.encounterBtn.addEventListener('click', openEncounter);
   els.encounter.closeBtn.addEventListener('click', () => encounter.stop());
   els.encounter.pulseBtn.addEventListener('click', () => encounter.pulseFromButton());

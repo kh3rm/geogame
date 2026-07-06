@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geocritter-lens-v0.1.0';
+const CACHE_NAME = 'geocritter-lens-v0.2.0';
 const APP_SHELL = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const APP_SHELL = [
   './src/config.js',
   './src/creatures.js',
   './src/db.js',
+  './src/backup.js',
   './src/encounter.js',
   './src/geo.js'
 ];

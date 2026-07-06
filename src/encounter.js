@@ -423,13 +423,14 @@ export class EncounterController {
       spawnLabel: this.spawn?.label ?? 'Unknown signal',
       rarity: this.creature.rarity,
       caughtAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       lat: this.position?.lat ?? null,
       lng: this.position?.lng ?? null,
     };
-    await saveCatch(catchRecord);
+    const savedCatch = await saveCatch(catchRecord);
     const onComplete = this.onComplete;
     await this.stop();
-    onComplete?.(catchRecord);
+    onComplete?.(savedCatch);
   }
 
   async stop() {

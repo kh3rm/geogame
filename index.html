@@ -68,8 +68,45 @@
           </div>
           <div id="collectionList" class="collection-list"></div>
         </section>
+
+        <section class="card backup-card">
+          <div class="card-head compact">
+            <div>
+              <p class="eyebrow">Backup</p>
+              <h2>Save & restore</h2>
+            </div>
+          </div>
+          <p class="muted">Export a tiny JSON save file, share it by mail/share sheet, or import another phone’s backup safely.</p>
+          <div class="button-grid backup-actions">
+            <button id="shareBackupBtn" type="button">Share backup</button>
+            <button id="downloadBackupBtn" type="button">Download JSON</button>
+            <button id="importBackupBtn" type="button">Import backup</button>
+          </div>
+          <p class="tiny">Merge adds missing catches only. Replace is available during import for moving to a new phone.</p>
+          <input id="backupFileInput" type="file" accept="application/json,.json" hidden />
+        </section>
       </aside>
     </main>
+  </div>
+
+  <div id="restoreModal" class="modal hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="restoreTitle">
+    <div class="modal-card">
+      <div class="card-head compact">
+        <div>
+          <p class="eyebrow">Import preview</p>
+          <h2 id="restoreTitle">Review backup before restore</h2>
+        </div>
+        <button id="restoreCloseBtn" class="ghost" type="button">Close</button>
+      </div>
+      <div id="restoreSummary" class="restore-summary"></div>
+      <div id="restoreCatchList" class="restore-catch-list"></div>
+      <div class="restore-actions">
+        <button id="restoreMergeBtn" class="primary" type="button">Add new catches</button>
+        <button id="restoreReplaceBtn" class="danger" type="button">Replace local save</button>
+        <button id="restoreCancelBtn" class="ghost" type="button">Cancel</button>
+      </div>
+      <p class="tiny">Merge never deletes catches already on this phone. Replace overwrites the local save after a second confirmation.</p>
+    </div>
   </div>
 
   <div id="encounterLayer" class="encounter hidden" aria-hidden="true">

@@ -22,6 +22,7 @@ The prototype is designed to be hosted directly on GitHub Pages.
 - A PixiJS scanner/portal reveal effect
 - A generic creature that emerges and can be caught with a pulse
 - Local collection persistence via IndexedDB
+- JSON save backup download/share and safe merge/replace import
 - Basic installable PWA files: manifest + service worker + icons
 
 ## Quick local test
@@ -67,6 +68,50 @@ GitHub Pages serves over HTTPS, which is important for geolocation and camera ac
 - The encounter also works with the fallback background if the camera is unavailable or blocked.
 - iOS may require a user gesture before motion/orientation sensors can be enabled; use the **Enable motion** button inside the encounter.
 
+## Backup and manual phone-to-phone merge
+
+Version 0.2 adds a local backup/restore screen. It is intentionally backend-free.
+
+### Export or share a backup
+
+Use **Share backup** to create a small JSON save file and send it through the device share sheet when supported. On phones this can usually be shared through Mail, Messages, Drive, AirDrop, etc. If file sharing is unavailable, the app downloads the same JSON file instead.
+
+Use **Download JSON** when you explicitly want a file download.
+
+The backup includes:
+
+- caught creatures
+- custom local spawn zones
+- small app settings
+
+It does not include bundled creature art, map tiles, camera images, or app files.
+
+### Import a backup
+
+Use **Import backup** and choose a `geocritter-save-....json` file. The app validates the file and shows a preview before changing IndexedDB.
+
+The normal mode is **Merge**:
+
+- new catches from the backup are shown in a collection-style preview
+- already-present catches are ignored
+- custom zones are added or updated if newer
+- nothing already on the phone is deleted
+
+The advanced mode is **Replace local save**:
+
+- clears local catches and custom zones
+- restores the selected backup
+- asks for an extra confirmation first
+
+For two phones without a backend, use this manual exchange:
+
+1. Phone A: Share backup.
+2. Phone B: Import backup → review new catches → Add new catches.
+3. Phone B: Share backup.
+4. Phone A: Import backup → review new catches → Add new catches.
+
+This is not live cloud sync, but it is simple, transparent, and independent of Supabase or any other backend.
+
 ## Files
 
 ```text
@@ -81,6 +126,7 @@ src/app.js                 Main application, map, state and UI
 src/config.js              Demo spawns and map config
 src/creatures.js           Creature data
 src/db.js                  IndexedDB wrapper
+src/backup.js              JSON backup/share/import helpers
 src/encounter.js           PixiJS camera/scanner encounter
 src/geo.js                 Distance and geolocation helpers
 ```
