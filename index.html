@@ -27,32 +27,36 @@
 
     <main class="layout">
       <section class="panel map-panel" aria-label="Geolokaliseringskarta">
-        <div id="map" class="map"></div>
-        <div class="map-overlay">
-          <div id="statusPill" class="status-pill">Startar…</div>
-        </div>
-        <div class="backup-fab-wrap">
-          <button id="backupToggleBtn" class="backup-fab" type="button" aria-expanded="false" aria-controls="backupMenuPanel" aria-label="Öppna backupmeny">
-            <span aria-hidden="true">💾</span>
-            <span>Backup</span>
-          </button>
-          <div id="backupMenuPanel" class="backup-menu hidden" role="region" aria-label="Backup och återställning">
-            <div class="backup-menu-head">
-              <div>
-                <p class="eyebrow">Backup</p>
-                <h2>Spara & återställ</h2>
-              </div>
-            </div>
-            <p class="tiny">Dela eller ladda ned en JSON-sparfil. Import kan sammanfoga saknade fångster utan att radera något.</p>
-            <div class="backup-menu-actions">
-              <button id="shareBackupBtn" type="button">Dela</button>
-              <button id="downloadBackupBtn" type="button">Ladda ned</button>
-              <button id="importBackupBtn" type="button">Importera</button>
-            </div>
+        <div class="map-frame">
+          <div id="map" class="map"></div>
+          <div class="map-overlay">
+            <div id="statusPill" class="status-pill">Startar…</div>
           </div>
         </div>
-        <div class="admin-fab-wrap">
-          <button id="adminEntryBtn" class="admin-fab" type="button" aria-label="Öppna adminläge">Admin</button>
+        <div class="map-tools" aria-label="Diskreta kartverktyg">
+          <div class="backup-fab-wrap">
+            <button id="backupToggleBtn" class="backup-fab" type="button" aria-expanded="false" aria-controls="backupMenuPanel" aria-label="Öppna backupmeny">
+              <span aria-hidden="true">💾</span>
+              <span>Backup</span>
+            </button>
+            <div id="backupMenuPanel" class="backup-menu hidden" role="region" aria-label="Backup och återställning">
+              <div class="backup-menu-head">
+                <div>
+                  <p class="eyebrow">Backup</p>
+                  <h2>Spara & återställ</h2>
+                </div>
+              </div>
+              <p class="tiny">Dela eller ladda ned en JSON-sparfil. Import kan sammanfoga saknade fångster utan att radera något.</p>
+              <div class="backup-menu-actions">
+                <button id="shareBackupBtn" type="button">Dela</button>
+                <button id="downloadBackupBtn" type="button">Ladda ned</button>
+                <button id="importBackupBtn" type="button">Importera</button>
+              </div>
+            </div>
+          </div>
+          <div class="admin-fab-wrap">
+            <button id="adminEntryBtn" class="admin-fab" type="button" aria-label="Öppna adminläge">Admin</button>
+          </div>
         </div>
       </section>
 
@@ -60,7 +64,7 @@
         <section class="card signal-card">
           <div class="card-head">
             <div>
-              <p class="eyebrow">Skannerläge</p>
+              <p class="eyebrow">Figursignal</p>
               <h2 id="nearestName">Ingen signal än</h2>
             </div>
             <div id="signalBadge" class="signal-badge">0%</div>
@@ -185,34 +189,39 @@
               <p class="eyebrow">Figur</p>
               <div id="adminCreatureChoices" class="admin-creature-choices"></div>
               <div class="admin-field">
-                <label for="adminSpawnLabelInput">Zonetikett</label>
+                <label for="adminSpawnLabelInput">Platsnamn / ledtråd</label>
                 <input id="adminSpawnLabelInput" type="text" maxlength="60" placeholder="Till exempel Bakom stora stenen" />
               </div>
-              <div class="admin-two-fields">
-                <div class="admin-field">
-                  <label for="adminRadiusInput">Fångstradie (m)</label>
-                  <input id="adminRadiusInput" type="number" min="15" max="250" step="5" value="65" />
+              <div class="admin-slider-field">
+                <div class="admin-slider-head">
+                  <label for="adminRadiusInput">Fångstavstånd</label>
+                  <strong id="adminRadiusValue">65 m</strong>
                 </div>
+                <input id="adminRadiusInput" type="range" min="15" max="250" step="5" value="65" />
+                <p class="tiny">Hur nära spelaren behöver vara för att kunna öppna kamerafångsten.</p>
+              </div>
+              <div class="admin-two-fields">
                 <div class="admin-field">
                   <label for="adminCountInput">Antal</label>
                   <input id="adminCountInput" type="number" min="1" max="24" step="1" value="5" />
                 </div>
-              </div>
-              <div class="admin-two-fields">
-                <div class="admin-field">
-                  <label for="adminAreaInput">Område (m)</label>
-                  <input id="adminAreaInput" type="number" min="30" max="900" step="10" value="180" />
+                <div class="admin-slider-field compact">
+                  <div class="admin-slider-head">
+                    <label for="adminAreaInput">Spridningsområde</label>
+                    <strong id="adminAreaValue">180 m</strong>
+                  </div>
+                  <input id="adminAreaInput" type="range" min="30" max="900" step="10" value="180" />
                 </div>
-                <label class="admin-check">
-                  <input id="adminMixCreaturesInput" type="checkbox" checked />
-                  <span>Blanda figurer vid auto</span>
-                </label>
               </div>
+              <label class="admin-check">
+                <input id="adminMixCreaturesInput" type="checkbox" checked />
+                <span>Blanda figurer vid auto</span>
+              </label>
               <div class="admin-row-actions">
                 <button id="adminPlaceModeBtn" type="button">Placera på kartan</button>
                 <button id="adminAutoSpreadBtn" class="primary" type="button">Auto-sprid i området</button>
               </div>
-              <p class="tiny">Placera manuellt genom att aktivera kartplacering och trycka på byggkartan. Auto-sprid använder kartans mitt och markerad områdesradie.</p>
+              <p class="tiny">Placera manuellt genom att aktivera kartplacering och trycka på byggkartan. Auto-sprid använder kartans mitt och visar spridningsområdet tillfälligt.</p>
             </div>
 
             <div class="admin-cardlet">
@@ -220,8 +229,8 @@
               <div class="admin-row-actions">
                 <button id="adminUseMapCenterBtn" type="button">Hämta huvudkartans mitt</button>
                 <button id="adminUseLocationBtn" type="button">Hämta min plats</button>
-                <button id="adminFitScenarioBtn" type="button">Visa alla zoner</button>
-                <button id="adminClearScenarioBtn" class="danger" type="button">Rensa zoner</button>
+                <button id="adminFitScenarioBtn" type="button">Visa alla figurer</button>
+                <button id="adminClearScenarioBtn" class="danger" type="button">Rensa figurer</button>
               </div>
             </div>
           </div>
@@ -231,13 +240,13 @@
               <div id="adminMap" class="admin-map" aria-label="Admin-karta för promenadplacering"></div>
               <div class="admin-map-hint">
                 <strong id="adminMapHint">Byggkarta</strong>
-                <span id="adminMapSubhint">Flytta kartan, välj figur och placera zoner.</span>
+                <span id="adminMapSubhint">Flytta kartan, välj figur och placera platser.</span>
               </div>
             </div>
             <div class="admin-scenario-summary">
-              <div><strong id="adminScenarioCount">0</strong><span>Zoner</span></div>
+              <div><strong id="adminScenarioCount">0</strong><span>Figurer</span></div>
               <div><strong id="adminScenarioCaughtCount">0</strong><span>Redan fångade</span></div>
-              <div><strong id="adminScenarioRadius">65 m</strong><span>Radie</span></div>
+              <div><strong id="adminScenarioRadius">65 m</strong><span>Fångstavstånd</span></div>
             </div>
             <div id="adminSpawnList" class="admin-spawn-list"></div>
           </div>

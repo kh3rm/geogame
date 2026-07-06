@@ -74,8 +74,10 @@ const els = {
     creatureChoices: $('adminCreatureChoices'),
     spawnLabelInput: $('adminSpawnLabelInput'),
     radiusInput: $('adminRadiusInput'),
+    radiusValue: $('adminRadiusValue'),
     countInput: $('adminCountInput'),
     areaInput: $('adminAreaInput'),
+    areaValue: $('adminAreaValue'),
     mixCreaturesInput: $('adminMixCreaturesInput'),
     placeModeBtn: $('adminPlaceModeBtn'),
     autoSpreadBtn: $('adminAutoSpreadBtn'),
@@ -139,6 +141,8 @@ const state = {
   adminSpawnLayer: null,
   adminAreaLayer: null,
   adminMapReady: false,
+  adminShowAreaGuide: false,
+  adminAreaHideTimer: null,
 };
 
 const encounter = new EncounterController(els.encounter);
@@ -152,6 +156,22 @@ function clampNumber(value, min, max, fallback) {
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   return Math.max(min, Math.min(max, number));
+}
+
+function signalLevel(signal) {
+  if (signal >= 85) return 'Mycket nära';
+  if (signal >= 55) return 'Nära';
+  if (signal >= 25) return 'Svag signal';
+  if (signal > 0) return 'Långt bort';
+  return 'Ingen signal';
+}
+
+function radiusValue() {
+  return Math.round(clampNumber(els.admin.radiusInput.value, 15, 250, 65));
+}
+
+function areaValue() {
+  return Math.round(clampNumber(els.admin.areaInput.value, 30, 900, 180));
 }
 
 function getSettingValue(settings, key, fallback = null) {
@@ -266,7 +286,7 @@ function getCatchDisplay(record) {
     name: record.creatureName || creature.name || record.creatureId || 'Okänd figur',
     rarity: record.rarity || creature.rarity || 'Okänd',
     caughtAt: formatDateTime(record.caughtAt),
-    spawnLabel: record.spawnLabel || spawn?.label || record.spawnId || 'Okänd zon',
+    spawnLabel: record.spawnLabel || spawn?.label || record.spawnId || 'Okänd plats',
     description: creature.description || 'En mystisk liten figur fångad i skannern.',
   };
 }
@@ -390,15 +410,17 @@ function renderSpawns() {
       radius: spawn.radiusM,
       color: spawnColor,
       fillColor: spawnColor,
-      fillOpacity: 0.13,
-      weight: 2,
+      fillOpacity: 0,
+      opacity: 0,
+      weight: 1,
+      interactive: false,
     }).addTo(state.spawnLayer);
 
     const marker = L.circleMarker([spawn.lat, spawn.lng], {
       radius: 9,
       color: '#ffffff',
       fillColor: spawnColor,
-      fillOpacity: 0.95,
+      fillOpacity: caught ? 0.62 : 0.96,
       weight: 2,
     }).addTo(state.spawnLayer);
 
@@ -410,7 +432,7 @@ function renderSpawns() {
         <strong>${escapeHtml(creature.name)}</strong><br />
         ${escapeHtml(spawn.label)}${scenarioLine}<br />
         Status: ${caught ? 'fångad' : 'ledig'}<br />
-        Radie: ${Math.round(spawn.radiusM)} m
+        Fångstavstånd: ${Math.round(spawn.radiusM)} m
       </div>
     `);
     marker.on('click', () => {
@@ -495,14 +517,16 @@ function updateNearest() {
     const normalColor = spawn?.source === SCENARIO_SOURCE ? '#f5cb6b' : spawn?.source === 'custom' ? '#9ff6ce' : '#7cc9ff';
     const color = caught ? '#c8ccd6' : normalColor;
     layers.zone.setStyle({
-      fillOpacity: caught ? 0.08 : selectedOrActive ? 0.26 : 0.13,
-      weight: selectedOrActive ? 4 : 2,
+      fillOpacity: caught ? 0 : selectedOrActive ? 0.09 : 0,
+      opacity: caught ? 0 : selectedOrActive ? 0.55 : 0,
+      weight: selectedOrActive ? 1.5 : 0,
       color,
       fillColor: color,
     });
     layers.marker.setStyle({
       radius: selectedOrActive ? 12 : 9,
       fillColor: color,
+      fillOpacity: caught ? 0.62 : 0.96,
     });
   }
 
@@ -518,8 +542,8 @@ function updateNearest() {
   }
 
   if (!nearest) {
-    els.nearestName.textContent = 'Inga zoner finns';
-    els.nearestDetails.textContent = 'Skapa en lokal testzon för att börja.';
+    els.nearestName.textContent = 'Inga figurer finns';
+    els.nearestDetails.textContent = 'Skapa en lokal testfigur för att börja.';
     els.signalBadge.textContent = '0%';
     els.signalBar.style.width = '0%';
     els.encounterBtn.disabled = true;
@@ -529,23 +553,25 @@ function updateNearest() {
 
   const creature = getCreature(nearest.spawn.creatureId);
   const alreadyCaught = isSpawnCaught(nearest.spawn.id);
+  const level = signalLevel(nearest.signal);
   els.nearestName.textContent = alreadyCaught
     ? `${creature.name} är redan fångad`
     : nearest.inside
       ? `${creature.name} är här`
       : `${creature.name}-signal`;
-  els.nearestDetails.textContent = `${nearest.spawn.label}: ${formatDistance(nearest.distance)} bort. Zonradie: ${nearest.spawn.radiusM} m.`;
+  els.nearestDetails.textContent = `${level} · ${formatDistance(nearest.distance)} bort · fångst möjlig inom ${Math.round(nearest.spawn.radiusM)} m. ${nearest.spawn.label}`;
   els.signalBadge.textContent = `${nearest.signal}%`;
+  els.signalBadge.setAttribute('aria-label', `Figursignal ${nearest.signal} procent, ${level.toLowerCase()}`);
   els.signalBar.style.width = `${nearest.signal}%`;
   els.encounterBtn.disabled = !nearest.inside || alreadyCaught;
-  els.encounterBtn.textContent = alreadyCaught ? 'Redan fångad i denna zon' : 'Öppna kamerafångst';
+  els.encounterBtn.textContent = alreadyCaught ? 'Redan fångad här' : 'Öppna kamerafångst';
 
   const mode = state.simulated ? 'Simulering' : 'GPS';
   setStatus(alreadyCaught
-    ? `${mode}: zonen är redan fångad`
+    ? `${mode}: platsen är redan fångad`
     : nearest.inside
       ? `${mode}: fångst tillgänglig`
-      : `${mode}: närmast ${formatDistance(nearest.distance)}`);
+      : `${mode}: ${level.toLowerCase()}`);
 }
 
 async function loadLocalData() {
@@ -586,7 +612,7 @@ async function loadLocalData() {
 function renderCollection() {
   els.catchCount.textContent = String(state.catches.length);
   if (state.catches.length === 0) {
-    els.collectionList.innerHTML = '<p class="muted">Inget fångat än. Gå in i en geozon och öppna skannern.</p>';
+    els.collectionList.innerHTML = '<p class="muted">Inget fångat än. Gå nära en figur och öppna skannern.</p>';
     return;
   }
 
@@ -625,7 +651,7 @@ function openCatchDetail(record) {
   `;
 
   if (location) {
-    els.detail.location.textContent = `Position: ${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}${location.radiusM ? ` · zonradie ${Math.round(location.radiusM)} m` : ''}`;
+    els.detail.location.textContent = `Position: ${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}${location.radiusM ? ` · fångstavstånd ${Math.round(location.radiusM)} m` : ''}`;
   } else {
     els.detail.location.textContent = 'Ingen sparad position för denna äldre fångst.';
   }
@@ -775,7 +801,7 @@ function setAdminPlaceMode(enabled) {
   els.admin.mapHint.textContent = state.adminPlaceMode ? 'Tryck på kartan för att placera' : 'Byggkarta';
   els.admin.mapSubhint.textContent = state.adminPlaceMode
     ? 'Varje tryck lägger ut vald figur i den aktiva promenaden.'
-    : 'Flytta kartan, välj figur och placera zoner.';
+    : 'Flytta kartan, välj figur och placera platser.';
 }
 
 function updateAdminButtons() {
@@ -822,7 +848,8 @@ function renderAdminSpawnList() {
   els.admin.spawnList.innerHTML = '';
   els.admin.scenarioCount.textContent = String(spawns.length);
   els.admin.caughtCount.textContent = String(spawns.filter((spawn) => isSpawnCaught(spawn.id)).length);
-  els.admin.scenarioRadius.textContent = `${Math.round(clampNumber(els.admin.radiusInput.value, 15, 250, 65))} m`;
+  syncAdminRangeLabels();
+  els.admin.scenarioRadius.textContent = `${radiusValue()} m`;
 
   if (!scenario) {
     const empty = document.createElement('p');
@@ -835,7 +862,7 @@ function renderAdminSpawnList() {
   if (spawns.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'admin-empty';
-    empty.textContent = 'Promenaden har inga zoner än. Tryck Placera på kartan eller Auto-sprid i området.';
+    empty.textContent = 'Promenaden har inga figurer än. Tryck Placera på kartan eller Auto-sprid i området.';
     els.admin.spawnList.appendChild(empty);
     return;
   }
@@ -901,19 +928,38 @@ function renderAdminScenarioSelector() {
   els.admin.descriptionInput.value = scenario?.description ?? '';
 }
 
+function syncAdminRangeLabels() {
+  if (els.admin.radiusValue) els.admin.radiusValue.textContent = `${radiusValue()} m`;
+  if (els.admin.areaValue) els.admin.areaValue.textContent = `${areaValue()} m`;
+}
+
+function setAdminAreaGuide(visible, { autoHide = false } = {}) {
+  state.adminShowAreaGuide = Boolean(visible);
+  if (state.adminAreaHideTimer) {
+    clearTimeout(state.adminAreaHideTimer);
+    state.adminAreaHideTimer = null;
+  }
+  renderAdminArea();
+  if (visible && autoHide) {
+    state.adminAreaHideTimer = setTimeout(() => setAdminAreaGuide(false), 2400);
+  }
+}
+
 function renderAdminArea() {
   if (!state.adminAreaLayer || !state.adminMap) return;
   state.adminAreaLayer.clearLayers();
-  const areaM = clampNumber(els.admin.areaInput.value, 30, 900, 180);
+  syncAdminRangeLabels();
+  if (!state.adminShowAreaGuide) return;
+  const areaM = areaValue();
   const center = state.adminMap.getCenter();
   L.circle([center.lat, center.lng], {
     radius: areaM,
     color: '#7cc9ff',
     fillColor: '#7cc9ff',
-    fillOpacity: 0.08,
-    weight: 2,
-    dashArray: '6 8',
-  }).addTo(state.adminAreaLayer);
+    fillOpacity: 0.045,
+    weight: 1.4,
+    dashArray: '5 9',
+  }).addTo(state.adminAreaLayer).bindTooltip('Spridningsområde för auto-spridning', { permanent: false });
 }
 
 function refreshAdminMap({ fit = false } = {}) {
@@ -930,8 +976,10 @@ function refreshAdminMap({ fit = false } = {}) {
       radius: spawn.radiusM,
       color,
       fillColor: color,
-      fillOpacity: caught ? 0.08 : 0.15,
-      weight: 2,
+      fillOpacity: caught ? 0.025 : 0.065,
+      opacity: 0.48,
+      weight: 1.2,
+      dashArray: '3 8',
     }).addTo(state.adminSpawnLayer);
     L.circleMarker([spawn.lat, spawn.lng], {
       radius: 9,
@@ -940,7 +988,7 @@ function refreshAdminMap({ fit = false } = {}) {
       fillOpacity: 0.96,
       weight: 2,
     })
-      .bindPopup(`<div class="spawn-popup"><strong>${escapeHtml(creature.name)}</strong><br />${escapeHtml(spawn.label)}<br />${caught ? 'Fångad' : 'Ledig'} · ${Math.round(spawn.radiusM)} m</div>`)
+      .bindPopup(`<div class="spawn-popup"><strong>${escapeHtml(creature.name)}</strong><br />${escapeHtml(spawn.label)}<br />${caught ? 'Fångad' : 'Ledig'} · ${Math.round(spawn.radiusM)} m fångstavstånd</div>`)
       .addTo(state.adminSpawnLayer);
   }
 
@@ -954,7 +1002,7 @@ function refreshAdminMap({ fit = false } = {}) {
   }
   state.adminMapReady = true;
   setTimeout(() => state.adminMap?.invalidateSize(), 60);
-  if (scenario) els.admin.mapSubhint.textContent = `${scenario.title}: ${spawns.length} planerade zoner.`;
+  if (scenario) els.admin.mapSubhint.textContent = `${scenario.title}: ${spawns.length} planerade figurer.`;
 }
 
 function ensureAdminMap() {
@@ -1080,7 +1128,7 @@ function makeScenarioSpawn(latLng, { order = null, creatureId = null, label = ''
   const creature = getCreature(chosenCreatureId);
   const scenarioSpawns = getScenarioSpawns(scenario.id);
   const nextOrder = order ?? scenarioSpawns.length + 1;
-  const radiusM = Math.round(clampNumber(els.admin.radiusInput.value, 15, 250, 65));
+  const radiusM = radiusValue();
   const cleanLabel = String(label || els.admin.spawnLabelInput.value || '').trim();
   return {
     id: `scenario-${scenario.id}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
@@ -1125,12 +1173,13 @@ async function handleAdminMapClick(event) {
 
 async function autoSpreadScenario() {
   const scenario = currentScenario();
+  setAdminAreaGuide(true, { autoHide: true });
   if (!scenario) {
     setAdminStatus('Skapa en promenad först.');
     return;
   }
   const count = Math.round(clampNumber(els.admin.countInput.value, 1, 24, 5));
-  const areaM = clampNumber(els.admin.areaInput.value, 30, 900, 180);
+  const areaM = areaValue();
   const center = mapCenterObject(state.adminMap);
   const existingCount = getScenarioSpawns(scenario.id).length;
   const creatureIds = Object.keys(CREATURES);
@@ -1176,7 +1225,7 @@ async function removeScenarioSpawn(spawnId) {
   refreshAdminMap();
   updateAdminButtons();
   updateNearest();
-  setAdminStatus('Zonen togs bort från promenaden. Eventuell gammal fångst ligger kvar i samlingen.');
+  setAdminStatus('Figuren togs bort från promenaden. Eventuell gammal fångst ligger kvar i samlingen.');
 }
 
 async function activateScenario() {
@@ -1206,13 +1255,13 @@ async function deactivateScenario() {
   renderAdminBuilder();
   updateNearest();
   setStatus('Vanligt kartläge aktivt');
-  setAdminStatus('Promenadläget är avstängt. Demozoner och vanliga egna zoner visas igen.');
+  setAdminStatus('Promenadläget är avstängt. Demofigurer och vanliga egna figurer visas igen.');
 }
 
 async function deleteScenario() {
   const scenario = currentScenario();
   if (!scenario) return;
-  const ok = window.confirm(`Ta bort promenaden "${scenario.title}" och alla dess utplacerade zoner? Fångster i samlingen raderas inte.`);
+  const ok = window.confirm(`Ta bort promenaden "${scenario.title}" och alla dess utplacerade figurer? Fångster i samlingen raderas inte.`);
   if (!ok) return;
   state.scenarios = state.scenarios.filter((item) => item.id !== scenario.id);
   const nextSpawns = state.customSpawns.filter((spawn) => spawn.scenarioId !== scenario.id);
@@ -1237,7 +1286,7 @@ async function clearScenarioSpawns() {
   if (!scenario) return;
   const count = getScenarioSpawns(scenario.id).length;
   if (count === 0) return;
-  const ok = window.confirm(`Rensa ${count} zoner från "${scenario.title}"? Fångster i samlingen raderas inte.`);
+  const ok = window.confirm(`Rensa ${count} figurer från "${scenario.title}"? Fångster i samlingen raderas inte.`);
   if (!ok) return;
   const nextSpawns = state.customSpawns.filter((spawn) => spawn.scenarioId !== scenario.id);
   await persistCustomSpawns(nextSpawns);
@@ -1247,7 +1296,7 @@ async function clearScenarioSpawns() {
   refreshAdminMap();
   updateAdminButtons();
   updateNearest();
-  setAdminStatus(`Alla zoner rensades från "${scenario.title}".`);
+  setAdminStatus(`Alla figurer rensades från "${scenario.title}".`);
 }
 
 function useMainMapCenterInAdmin() {
@@ -1267,7 +1316,7 @@ function useLocationInAdmin() {
 
 function fitScenarioInAdmin() {
   refreshAdminMap({ fit: true });
-  setAdminStatus('Visar promenadens alla zoner.');
+  setAdminStatus('Visar promenadens alla figurer.');
 }
 function chooseBackupFile() {
   return new Promise((resolve) => {
@@ -1310,7 +1359,7 @@ function renderRestoreModal(backup, preview) {
   els.restore.summary.innerHTML = `
     <div class="restore-stat"><strong>${preview.newCatches.length}</strong><span>Nya fångster att lägga till</span></div>
     <div class="restore-stat"><strong>${preview.duplicateCatches.length}</strong><span>Finns redan på telefonen</span></div>
-    <div class="restore-stat"><strong>${preview.newSpawns.length + preview.updatedSpawns.length}</strong><span>Egna zoner att lägga till/uppdatera</span></div>
+    <div class="restore-stat"><strong>${preview.newSpawns.length + preview.updatedSpawns.length}</strong><span>Egna platser att lägga till/uppdatera</span></div>
   `;
 
   els.restore.catchList.innerHTML = '';
@@ -1341,7 +1390,7 @@ function renderRestoreModal(backup, preview) {
     ? 'Inget nytt att lägga till'
     : preview.newCatches.length > 0
       ? `Lägg till ${preview.newCatches.length} fångster`
-      : 'Uppdatera zoner';
+      : 'Uppdatera platser';
   els.restore.mergeBtn.disabled = changes === 0;
   els.restore.modal.classList.remove('hidden');
   els.restore.modal.setAttribute('aria-hidden', 'false');
@@ -1401,7 +1450,7 @@ async function applyMergeRestore() {
 
 async function applyReplaceRestore() {
   if (!state.pendingRestore) return;
-  const ok = window.confirm('Ersätta lokal sparfil? Det tar bort fångster och egna zoner på den här telefonen och återställer vald backup.');
+  const ok = window.confirm('Ersätta lokal sparfil? Det tar bort fångster och egna platser på den här telefonen och återställer vald backup.');
   if (!ok) return;
 
   try {
@@ -1419,7 +1468,7 @@ async function openEncounter() {
   const active = state.active;
   if (!active) return;
   if (isSpawnCaught(active.spawn.id)) {
-    setStatus('Den här zonen är redan fångad');
+    setStatus('Den här platsen är redan fångad');
     updateNearest();
     return;
   }
@@ -1482,8 +1531,17 @@ function setupEvents() {
   els.admin.useLocationBtn.addEventListener('click', useLocationInAdmin);
   els.admin.fitScenarioBtn.addEventListener('click', fitScenarioInAdmin);
   els.admin.clearScenarioBtn.addEventListener('click', clearScenarioSpawns);
-  els.admin.radiusInput.addEventListener('input', renderAdminSpawnList);
-  els.admin.areaInput.addEventListener('input', renderAdminArea);
+  els.admin.radiusInput.addEventListener('input', () => {
+    syncAdminRangeLabels();
+    renderAdminSpawnList();
+  });
+  els.admin.areaInput.addEventListener('input', () => setAdminAreaGuide(true));
+  els.admin.areaInput.addEventListener('focus', () => setAdminAreaGuide(true));
+  els.admin.areaInput.addEventListener('blur', () => setAdminAreaGuide(false));
+  els.admin.autoSpreadBtn.addEventListener('mouseenter', () => setAdminAreaGuide(true));
+  els.admin.autoSpreadBtn.addEventListener('mouseleave', () => setAdminAreaGuide(false));
+  els.admin.autoSpreadBtn.addEventListener('focus', () => setAdminAreaGuide(true));
+  els.admin.autoSpreadBtn.addEventListener('blur', () => setAdminAreaGuide(false));
   els.detail.closeBtn.addEventListener('click', closeCatchDetail);
   els.detail.modal.addEventListener('click', (event) => {
     if (event.target === els.detail.modal) closeCatchDetail();

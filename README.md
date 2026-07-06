@@ -5,9 +5,9 @@ En liten, statisk PWA-prototyp för geoplacerad figurjakt. Projektet är byggt f
 ## Ingår
 
 - Vanilla JavaScript / ES-moduler
-- Leaflet-karta och geozoner
+- Leaflet-karta och fångstplatser
 - PixiJS-baserat kamerafångstläge
-- IndexedDB för lokala fångster, egna testzoner och backupflöde
+- IndexedDB för lokala fångster, egna testfigurer och backupflöde
 - PWA-manifest och service worker
 - JSON-backup med delning/nedladdning/import
 - Diskret backupmeny direkt under kartan
@@ -41,21 +41,21 @@ Kamera och plats kräver säker kontext. `localhost` fungerar lokalt. GitHub Pag
 5. Tryck direkt på figuren fem gånger.
 6. Varje träff ger en liten visuell reaktion.
 7. På femte träffen visas `____ fångad!` i tre sekunder.
-8. Därefter sparas exakt en fångst för den zonen.
+8. Därefter sparas exakt en fångst för den platsen.
 
 ## Viktigt om fångster
 
 Från v0.4 gäller:
 
-- en zon/spawn kan bara ge en registrerad fångst
+- en plats/spawn kan bara ge en registrerad fångst
 - fångst sparas först efter fem giltiga träffar
 - missar nära figuren räknas inte
-- äldre dubbla fångster per zon rensas lokalt vid appstart
-- backup/import försöker också hålla fångster unika per zon
+- äldre dubbla fångster per plats rensas lokalt vid appstart
+- backup/import försöker också hålla fångster unika per plats
 
 ## Backup och manuell telefon-till-telefon-sammanfogning
 
-Backupmenyn ligger nu diskret nere till vänster i kartvyn bakom 💾 **Backup**. Tryck där för att öppna alternativen.
+Backupmenyn ligger nu diskret i verktygsraden direkt under kartan bakom 💾 **Backup**. Tryck där för att öppna alternativen nedåt medan knappen ligger kvar.
 
 Använd **Dela** för att skapa en liten JSON-sparfil och dela den via telefonens delningsmeny, till exempel Mail, Meddelanden, Drive eller AirDrop. Om fildelning inte stöds laddas samma JSON-fil ned i stället.
 
@@ -87,11 +87,11 @@ Adminvyn är tänkt för en vuxen/arrangör och låter dig:
 - välja figurtyp
 - placera ut figurer manuellt på en separat byggkarta
 - auto-sprida ett valt antal figurer inom ett område runt kartans mitt
-- välja fångstradie
-- aktivera en promenad så huvudkartan bara visar just den rundans zoner
+- välja fångstavstånd
+- aktivera en promenad så huvudkartan bara visar just den rundans figurer
 - stänga av promenadläget och gå tillbaka till vanligt demo-/testläge
 
-Scenarion sparas lokalt i IndexedDB. Själva zonerna ligger i `customSpawns` med `source: "scenario"`, och scenariolistan sparas i settings. Backup/replace tar med allt. Merge lägger även ihop importerade promenadinställningar utan att aktivera dem automatiskt.
+Scenarion sparas lokalt i IndexedDB. Själva figurerna ligger i `customSpawns` med `source: "scenario"`, och scenariolistan sparas i settings. Backup/replace tar med allt. Merge lägger även ihop importerade promenadinställningar utan att aktivera dem automatiskt.
 
 Adminlösenordet är bara ett diskret lokalt UX-lås för barnet, inte kryptografisk säkerhet.
 
@@ -113,10 +113,10 @@ Tryck på en tidigare fångst för att öppna ett minimalistiskt fångstkort med
 - större figurvy
 - namn och beskrivning
 - tidpunkt
-- zon/plats
-- karta centrerad på fångstzonen
+- plats
+- karta centrerad på fångstplatsen
 
-Äldre fångster utan sparad zonposition försöker falla tillbaka till zonens position i aktuell appdata.
+Äldre fångster utan sparad platsposition försöker falla tillbaka till platsens position i aktuell appdata.
 
 ## Projektstruktur
 
@@ -130,7 +130,7 @@ src/app.js                 Huvudflöde, karta, UI, samling
 src/encounter.js           PixiJS-kamerafångst med fem träffar
 src/db.js                  IndexedDB-hjälpare
 src/backup.js              JSON-backup, delning, import och merge
-src/config.js              Demozoner och kartinställningar
+src/config.js              Demofigurer och kartinställningar
 src/creatures.js           Figurer
 src/geo.js                 Avstånd och signalstyrka
 ```
@@ -140,6 +140,7 @@ src/geo.js                 Avstånd och signalstyrka
 - v0.1: första statiska prototypen.
 - v0.2: JSON-backup, delning/import, merge/replace.
 - v0.3: aktivt virvlande kamerafångstläge.
-- v0.4: svenskt gränssnitt, fem direkta träffar krävs, en fångst per zon, tresekunders fångstbekräftelse.
+- v0.4: svenskt gränssnitt, fem direkta träffar krävs, en fångst per plats, tresekunders fångstbekräftelse.
 - v0.5: diskret backupknapp under kartan, figurminiatyrer i samlingen, konsekvent figuridentitet och detaljvy med karta.
 - v0.6: dold adminvy med lösenordet `AdmiN`, promenadscenarion, separat byggkarta, manuell placering, auto-spridning och aktivt scenario-läge.
+- v0.7: renare huvudkarta, backup/admin-rad under kartan, tydligare figursignal, mindre zon-språk, fångstavstånd som slider och tillfälligt spridningsområde för auto-spridning.

@@ -890,3 +890,111 @@ button.capture:disabled {
   .admin-spawn-actions { grid-column: 1 / -1; justify-content: stretch; }
   .admin-spawn-actions button { flex: 1; }
 }
+
+/* v0.7: renare huvudkarta, verktygsrad under kartan och tydligare adminreglage */
+.map-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 36rem;
+  overflow: hidden;
+}
+.map-frame {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 32rem;
+}
+.map-frame .map {
+  height: 100%;
+  min-height: 32rem;
+}
+.map-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.68rem 0.8rem;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  background: rgba(8,14,22,0.74);
+}
+.map-tools .backup-fab-wrap,
+.map-tools .admin-fab-wrap {
+  position: static;
+  z-index: auto;
+}
+.map-tools .backup-fab-wrap {
+  display: grid;
+  gap: 0.55rem;
+  justify-items: start;
+}
+.map-tools .backup-fab {
+  background: rgba(255,255,255,0.06);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.map-tools .backup-menu {
+  margin-top: 0;
+  background: rgba(13,21,33,0.96);
+  box-shadow: 0 14px 34px rgba(0,0,0,0.32);
+}
+.map-tools .admin-fab {
+  background: rgba(255,255,255,0.04);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.admin-slider-field {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+.admin-slider-field.compact { margin-top: 0; }
+.admin-slider-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+.admin-slider-head label {
+  color: var(--muted);
+  font-size: 0.73rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.admin-slider-head strong {
+  color: var(--accent);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+.admin-slider-field input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.signal-badge {
+  min-width: 3.8rem;
+}
+.leaflet-interactive:focus {
+  outline: none;
+}
+
+@media (max-width: 860px) {
+  .map-panel { min-height: 34rem; }
+  .map-frame, .map-frame .map { min-height: 28rem; }
+  .map-tools {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+  }
+  .map-tools .backup-menu {
+    width: min(20rem, calc(100vw - 2.6rem));
+  }
+}
+
+@media (max-width: 460px) {
+  .map-tools {
+    grid-template-columns: 1fr;
+  }
+  .map-tools .admin-fab-wrap {
+    justify-self: end;
+  }
+}

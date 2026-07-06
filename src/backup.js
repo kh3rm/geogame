@@ -159,19 +159,19 @@ function validateCatch(record) {
 }
 
 function validateCustomSpawn(spawn) {
-  if (!spawn || typeof spawn !== 'object') throw new Error('En egen zonpost är ogiltig.');
-  if (typeof spawn.id !== 'string' || spawn.id.length < 3) throw new Error('En egen zon saknar id.');
+  if (!spawn || typeof spawn !== 'object') throw new Error('En egen platspost är ogiltig.');
+  if (typeof spawn.id !== 'string' || spawn.id.length < 3) throw new Error('En egen plats saknar id.');
   if (typeof spawn.creatureId !== 'string' || spawn.creatureId.length < 2) {
-    throw new Error(`Egen zon ${spawn.id} saknar creatureId.`);
+    throw new Error(`Egen plats ${spawn.id} saknar creatureId.`);
   }
   if (typeof spawn.lat !== 'number' || spawn.lat < -90 || spawn.lat > 90) {
-    throw new Error(`Egen zon ${spawn.id} har ogiltig latitud.`);
+    throw new Error(`Egen plats ${spawn.id} har ogiltig latitud.`);
   }
   if (typeof spawn.lng !== 'number' || spawn.lng < -180 || spawn.lng > 180) {
-    throw new Error(`Egen zon ${spawn.id} har ogiltig longitud.`);
+    throw new Error(`Egen plats ${spawn.id} har ogiltig longitud.`);
   }
   if (typeof spawn.radiusM !== 'number' || spawn.radiusM <= 0 || spawn.radiusM > 10000) {
-    throw new Error(`Egen zon ${spawn.id} har ogiltig radie.`);
+    throw new Error(`Egen plats ${spawn.id} har ogiltigt fångstavstånd.`);
   }
 }
 
