@@ -14,6 +14,7 @@ En liten, statisk PWA-prototyp för geoplacerad figurjakt. Projektet är byggt f
 - Svenskt gränssnitt
 - Samlingskort med samma figuridentitet som i kamerafångsten
 - Detaljvy för tidigare fångster med karta
+- Dold adminvy för att bygga och aktivera promenadscenarion
 
 ## Testa lokalt
 
@@ -75,6 +76,25 @@ Ersätt lokal sparfil:
 - kräver extra bekräftelse
 - används främst vid flytt till ny telefon
 
+
+## Admin och promenadscenarion
+
+Längst nere till höger i kartvyn finns en mycket diskret **Admin**-knapp. Den öppnar en lösenordsskyddad lokal byggvy. Lösenordet är `AdmiN`.
+
+Adminvyn är tänkt för en vuxen/arrangör och låter dig:
+
+- skapa namngivna promenader/scenarion
+- välja figurtyp
+- placera ut figurer manuellt på en separat byggkarta
+- auto-sprida ett valt antal figurer inom ett område runt kartans mitt
+- välja fångstradie
+- aktivera en promenad så huvudkartan bara visar just den rundans zoner
+- stänga av promenadläget och gå tillbaka till vanligt demo-/testläge
+
+Scenarion sparas lokalt i IndexedDB. Själva zonerna ligger i `customSpawns` med `source: "scenario"`, och scenariolistan sparas i settings. Backup/replace tar med allt. Merge lägger även ihop importerade promenadinställningar utan att aktivera dem automatiskt.
+
+Adminlösenordet är bara ett diskret lokalt UX-lås för barnet, inte kryptografisk säkerhet.
+
 ## Publicera på GitHub Pages
 
 1. Skapa ett nytt GitHub-repo.
@@ -122,3 +142,4 @@ src/geo.js                 Avstånd och signalstyrka
 - v0.3: aktivt virvlande kamerafångstläge.
 - v0.4: svenskt gränssnitt, fem direkta träffar krävs, en fångst per zon, tresekunders fångstbekräftelse.
 - v0.5: diskret backupknapp under kartan, figurminiatyrer i samlingen, konsekvent figuridentitet och detaljvy med karta.
+- v0.6: dold adminvy med lösenordet `AdmiN`, promenadscenarion, separat byggkarta, manuell placering, auto-spridning och aktivt scenario-läge.

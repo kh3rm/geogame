@@ -232,12 +232,46 @@ export async function buildImportPreview(backup) {
   };
 }
 
+function normalizeAdminScenarios(value) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((scenario) => scenario && typeof scenario.id === 'string' && scenario.id.length > 2);
+}
+
+async function mergeAdminScenarioSettings(importedSettings) {
+  const importedScenarioSetting = normalizeArray(importedSettings).find((setting) => setting?.key === 'adminScenarios');
+  const importedScenarios = normalizeAdminScenarios(importedScenarioSetting?.value);
+  if (importedScenarios.length === 0) return 0;
+
+  const localSetting = await get('settings', 'adminScenarios');
+  const byId = new Map(normalizeAdminScenarios(localSetting?.value).map((scenario) => [scenario.id, scenario]));
+  let changed = 0;
+
+  for (const scenario of importedScenarios) {
+    const existing = byId.get(scenario.id);
+    if (!existing || recordTime(scenario) > recordTime(existing)) {
+      byId.set(scenario.id, scenario);
+      changed += 1;
+    }
+  }
+
+  if (changed > 0) {
+    await put('settings', {
+      key: 'adminScenarios',
+      value: [...byId.values()].sort((a, b) => recordTime(b) - recordTime(a)),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  return changed;
+}
+
 export async function mergeBackup(backup, preview = null) {
   validateBackup(backup);
   const diff = preview ?? await buildImportPreview(backup);
 
   const catchesToAdd = diff.newCatches;
   const spawnsToPut = [...diff.newSpawns, ...diff.updatedSpawns];
+  const scenariosMerged = await mergeAdminScenarioSettings(backup.data.settings);
 
   await Promise.all([
     catchesToAdd.length ? putMany('catches', catchesToAdd) : Promise.resolve(),
@@ -255,6 +289,7 @@ export async function mergeBackup(backup, preview = null) {
     catchesAdded: catchesToAdd.length,
     spawnsAdded: diff.newSpawns.length,
     spawnsUpdated: diff.updatedSpawns.length,
+    scenariosMerged,
     catchesSkipped: diff.duplicateCatches.length,
   };
 }
