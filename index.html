@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#101826" />
+  <meta name="description" content="A tiny geolocation creature-catching PWA prototype using Leaflet, PixiJS and IndexedDB." />
+  <title>GeoCritter Lens</title>
+
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./assets/icon-192.png" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">PWA prototype</p>
+        <h1>GeoCritter Lens</h1>
+      </div>
+      <button id="installBtn" class="ghost hidden" type="button">Install</button>
+    </header>
+
+    <main class="layout">
+      <section class="panel map-panel" aria-label="Geolocation map">
+        <div id="map" class="map"></div>
+        <div class="map-overlay">
+          <div id="statusPill" class="status-pill">Initializing…</div>
+        </div>
+      </section>
+
+      <aside class="panel control-panel">
+        <section class="card signal-card">
+          <div class="card-head">
+            <div>
+              <p class="eyebrow">Scanner state</p>
+              <h2 id="nearestName">No signal yet</h2>
+            </div>
+            <div id="signalBadge" class="signal-badge">0%</div>
+          </div>
+          <div class="meter" aria-hidden="true"><span id="signalBar"></span></div>
+          <p id="nearestDetails" class="muted">Allow location or use simulation to test the encounter.</p>
+          <button id="encounterBtn" class="primary" type="button" disabled>Open scanner encounter</button>
+        </section>
+
+        <section class="card button-grid-card">
+          <p class="eyebrow">Test controls</p>
+          <div class="button-grid">
+            <button id="locateBtn" type="button">Use my location</button>
+            <button id="spawnHereBtn" type="button">Spawn here</button>
+            <button id="simulateBtn" type="button">Simulate near</button>
+            <button id="resetBtn" type="button">Reset catches</button>
+          </div>
+          <p class="tiny">Tip: on GitHub Pages this runs over HTTPS, so camera and geolocation permissions can work. Local testing also works from <code>localhost</code>.</p>
+        </section>
+
+        <section class="card collection-card">
+          <div class="card-head compact">
+            <div>
+              <p class="eyebrow">Collection</p>
+              <h2>Caught creatures</h2>
+            </div>
+            <span id="catchCount" class="count-pill">0</span>
+          </div>
+          <div id="collectionList" class="collection-list"></div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <div id="encounterLayer" class="encounter hidden" aria-hidden="true">
+    <video id="cameraVideo" class="camera-video" playsinline muted autoplay></video>
+    <div id="cameraFallback" class="camera-fallback hidden">
+      <div class="fake-horizon"></div>
+      <p>Camera unavailable — demo background active</p>
+    </div>
+    <div id="pixiHost" class="pixi-host"></div>
+    <div class="encounter-hud top">
+      <button id="closeEncounterBtn" class="ghost light" type="button">Exit</button>
+      <div>
+        <p class="eyebrow">Scanner encounter</p>
+        <h2 id="encounterTitle">Creature signal</h2>
+      </div>
+    </div>
+    <div class="encounter-hud bottom">
+      <p id="encounterHint">Hold steady while the signal resolves…</p>
+      <div class="encounter-actions">
+        <button id="motionBtn" class="ghost light" type="button">Enable motion</button>
+        <button id="pulseBtn" class="primary capture" type="button">Pulse capture</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/pixi.js@8.19.0/dist/pixi.min.js"></script>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>

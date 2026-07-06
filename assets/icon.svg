@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="GeoCritter Lens icon">
+  <defs>
+    <radialGradient id="bg" cx="35%" cy="25%" r="75%">
+      <stop offset="0" stop-color="#7cc9ff" />
+      <stop offset="0.58" stop-color="#132336" />
+      <stop offset="1" stop-color="#08101a" />
+    </radialGradient>
+    <linearGradient id="leaf" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#d9ffe8" />
+      <stop offset="1" stop-color="#6fe79d" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+  <circle cx="256" cy="260" r="156" fill="none" stroke="#9ff6ce" stroke-width="18" opacity="0.82" />
+  <circle cx="256" cy="260" r="106" fill="none" stroke="#ffffff" stroke-width="8" opacity="0.35" />
+  <ellipse cx="180" cy="166" rx="34" ry="78" fill="url(#leaf)" transform="rotate(-34 180 166)" />
+  <ellipse cx="332" cy="166" rx="34" ry="78" fill="url(#leaf)" transform="rotate(34 332 166)" />
+  <rect x="158" y="184" width="196" height="190" rx="74" fill="#83e6a1" />
+  <ellipse cx="256" cy="310" rx="54" ry="38" fill="#ffffff" opacity="0.2" />
+  <circle cx="218" cy="244" r="18" fill="#092016" />
+  <circle cx="294" cy="244" r="18" fill="#092016" />
+  <circle cx="224" cy="237" r="6" fill="#ffffff" />
+  <circle cx="300" cy="237" r="6" fill="#ffffff" />
+  <rect x="225" y="306" width="62" height="14" rx="7" fill="#17351f" opacity="0.72" />
+  <path d="M256 64v68M256 380v68M64 256h68M380 256h68" stroke="#ffffff" stroke-width="14" stroke-linecap="round" opacity="0.5" />
+</svg>
