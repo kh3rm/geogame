@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="sv">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#101826" />
-  <meta name="description" content="A tiny geolocation creature-catching PWA prototype using Leaflet, PixiJS and IndexedDB." />
+  <meta name="description" content="En liten geoplacerad fångst-PWA med Leaflet, PixiJS och IndexedDB." />
   <title>GeoCritter Lens</title>
 
   <link rel="manifest" href="./manifest.webmanifest" />
@@ -19,17 +19,17 @@
   <div id="app" class="app-shell">
     <header class="topbar">
       <div>
-        <p class="eyebrow">PWA prototype</p>
+        <p class="eyebrow">PWA-prototyp</p>
         <h1>GeoCritter Lens</h1>
       </div>
-      <button id="installBtn" class="ghost hidden" type="button">Install</button>
+      <button id="installBtn" class="ghost hidden" type="button">Installera</button>
     </header>
 
     <main class="layout">
-      <section class="panel map-panel" aria-label="Geolocation map">
+      <section class="panel map-panel" aria-label="Geolokaliseringskarta">
         <div id="map" class="map"></div>
         <div class="map-overlay">
-          <div id="statusPill" class="status-pill">Initializing…</div>
+          <div id="statusPill" class="status-pill">Startar…</div>
         </div>
       </section>
 
@@ -37,32 +37,32 @@
         <section class="card signal-card">
           <div class="card-head">
             <div>
-              <p class="eyebrow">Scanner state</p>
-              <h2 id="nearestName">No signal yet</h2>
+              <p class="eyebrow">Skannerläge</p>
+              <h2 id="nearestName">Ingen signal än</h2>
             </div>
             <div id="signalBadge" class="signal-badge">0%</div>
           </div>
           <div class="meter" aria-hidden="true"><span id="signalBar"></span></div>
-          <p id="nearestDetails" class="muted">Allow location or use simulation to test the encounter.</p>
-          <button id="encounterBtn" class="primary" type="button" disabled>Open camera catch mode</button>
+          <p id="nearestDetails" class="muted">Tillåt plats eller använd simulering för att testa fångsten.</p>
+          <button id="encounterBtn" class="primary" type="button" disabled>Öppna kamerafångst</button>
         </section>
 
         <section class="card button-grid-card">
-          <p class="eyebrow">Test controls</p>
+          <p class="eyebrow">Testkontroller</p>
           <div class="button-grid">
-            <button id="locateBtn" type="button">Use my location</button>
-            <button id="spawnHereBtn" type="button">Spawn here</button>
-            <button id="simulateBtn" type="button">Simulate near</button>
-            <button id="resetBtn" type="button">Reset catches</button>
+            <button id="locateBtn" type="button">Använd min plats</button>
+            <button id="spawnHereBtn" type="button">Skapa här</button>
+            <button id="simulateBtn" type="button">Simulera nära</button>
+            <button id="resetBtn" type="button">Nollställ fångster</button>
           </div>
-          <p class="tiny">Tip: on GitHub Pages this runs over HTTPS, so camera and geolocation permissions can work. Local testing also works from <code>localhost</code>.</p>
+          <p class="tiny">Tips: på GitHub Pages körs detta över HTTPS, så kamera och platsbehörighet kan fungera. Lokal testning fungerar också från <code>localhost</code>.</p>
         </section>
 
         <section class="card collection-card">
           <div class="card-head compact">
             <div>
-              <p class="eyebrow">Collection</p>
-              <h2>Caught creatures</h2>
+              <p class="eyebrow">Samling</p>
+              <h2>Fångade figurer</h2>
             </div>
             <span id="catchCount" class="count-pill">0</span>
           </div>
@@ -73,16 +73,16 @@
           <div class="card-head compact">
             <div>
               <p class="eyebrow">Backup</p>
-              <h2>Save & restore</h2>
+              <h2>Spara & återställ</h2>
             </div>
           </div>
-          <p class="muted">Export a tiny JSON save file, share it by mail/share sheet, or import another phone’s backup safely.</p>
+          <p class="muted">Exportera en liten JSON-sparfil, dela den via mejl/delningsmenyn eller importera en annan telefons backup säkert.</p>
           <div class="button-grid backup-actions">
-            <button id="shareBackupBtn" type="button">Share backup</button>
-            <button id="downloadBackupBtn" type="button">Download JSON</button>
-            <button id="importBackupBtn" type="button">Import backup</button>
+            <button id="shareBackupBtn" type="button">Dela backup</button>
+            <button id="downloadBackupBtn" type="button">Ladda ned JSON</button>
+            <button id="importBackupBtn" type="button">Importera backup</button>
           </div>
-          <p class="tiny">Merge adds missing catches only. Replace is available during import for moving to a new phone.</p>
+          <p class="tiny">Sammanfoga lägger bara till saknade fångster. Ersätt finns vid import om man flyttar till en ny telefon.</p>
           <input id="backupFileInput" type="file" accept="application/json,.json" hidden />
         </section>
       </aside>
@@ -93,19 +93,19 @@
     <div class="modal-card">
       <div class="card-head compact">
         <div>
-          <p class="eyebrow">Import preview</p>
-          <h2 id="restoreTitle">Review backup before restore</h2>
+          <p class="eyebrow">Importgranskning</p>
+          <h2 id="restoreTitle">Granska backup före återställning</h2>
         </div>
-        <button id="restoreCloseBtn" class="ghost" type="button">Close</button>
+        <button id="restoreCloseBtn" class="ghost" type="button">Stäng</button>
       </div>
       <div id="restoreSummary" class="restore-summary"></div>
       <div id="restoreCatchList" class="restore-catch-list"></div>
       <div class="restore-actions">
-        <button id="restoreMergeBtn" class="primary" type="button">Add new catches</button>
-        <button id="restoreReplaceBtn" class="danger" type="button">Replace local save</button>
-        <button id="restoreCancelBtn" class="ghost" type="button">Cancel</button>
+        <button id="restoreMergeBtn" class="primary" type="button">Lägg till nya fångster</button>
+        <button id="restoreReplaceBtn" class="danger" type="button">Ersätt lokal sparfil</button>
+        <button id="restoreCancelBtn" class="ghost" type="button">Avbryt</button>
       </div>
-      <p class="tiny">Merge never deletes catches already on this phone. Replace overwrites the local save after a second confirmation.</p>
+      <p class="tiny">Sammanfoga raderar aldrig fångster som redan finns på telefonen. Ersätt skriver över den lokala sparfilen efter en extra bekräftelse.</p>
     </div>
   </div>
 
@@ -113,21 +113,25 @@
     <video id="cameraVideo" class="camera-video" playsinline muted autoplay></video>
     <div id="cameraFallback" class="camera-fallback hidden">
       <div class="fake-horizon"></div>
-      <p>Camera unavailable — demo background active</p>
+      <p>Kameran saknas — demobakgrund används</p>
     </div>
     <div id="pixiHost" class="pixi-host"></div>
     <div class="encounter-hud top">
-      <button id="closeEncounterBtn" class="ghost light" type="button">Exit</button>
+      <button id="closeEncounterBtn" class="ghost light" type="button">Avsluta</button>
       <div>
-        <p class="eyebrow">Camera catch mode</p>
-        <h2 id="encounterTitle">Creature signal</h2>
+        <p class="eyebrow">Kamerafångst</p>
+        <h2 id="encounterTitle">Figursignal</h2>
       </div>
     </div>
+    <div id="catchConfirm" class="catch-confirm hidden" aria-live="polite">
+      <div id="catchConfirmCreature" class="catch-confirm-creature" aria-hidden="true"></div>
+      <strong id="catchConfirmText">Fångad!</strong>
+    </div>
     <div class="encounter-hud bottom">
-      <p id="encounterHint">Open the camera and follow the swirl…</p>
+      <p id="encounterHint">Öppna kameran och följ virveln…</p>
       <div class="encounter-actions">
-        <button id="motionBtn" class="ghost light" type="button">Enable motion</button>
-        <button id="pulseBtn" class="primary capture" type="button">Pulse capture</button>
+        <button id="motionBtn" class="ghost light" type="button">Aktivera rörelse</button>
+        <button id="pulseBtn" class="primary capture" type="button">Träffar 0/5</button>
       </div>
     </div>
   </div>

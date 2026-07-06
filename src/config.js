@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.3.0';
+export const APP_VERSION = '0.4.0';
 
 export const DEFAULT_CENTER = {
   // Umeå, Sweden: a neutral default for a Swedish test map.
@@ -13,7 +13,7 @@ export const DEFAULT_SPAWNS = [
   {
     id: 'umea-river-mossblip',
     creatureId: 'mossblip',
-    label: 'Riverbank shimmer',
+    label: 'Glitter vid älven',
     lat: 63.8253,
     lng: 20.2639,
     radiusM: 75,
@@ -22,7 +22,7 @@ export const DEFAULT_SPAWNS = [
   {
     id: 'umea-park-spriggle',
     creatureId: 'spriggle',
-    label: 'Park rustle',
+    label: 'Prassel i parken',
     lat: 63.8270,
     lng: 20.2575,
     radiusM: 70,
@@ -31,7 +31,7 @@ export const DEFAULT_SPAWNS = [
   {
     id: 'umea-bridge-lumifin',
     creatureId: 'lumifin',
-    label: 'Bridge glow',
+    label: 'Skimmer vid bron',
     lat: 63.8239,
     lng: 20.2705,
     radiusM: 80,

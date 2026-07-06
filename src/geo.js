@@ -22,7 +22,7 @@ export function signalFromDistance(distanceM, radiusM) {
 }
 
 export function formatDistance(meters) {
-  if (!Number.isFinite(meters)) return 'unknown distance';
+  if (!Number.isFinite(meters)) return 'okänt avstånd';
   if (meters < 1000) return `${Math.round(meters)} m`;
   return `${(meters / 1000).toFixed(2)} km`;
 }

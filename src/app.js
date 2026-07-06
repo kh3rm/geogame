@@ -1,6 +1,6 @@
 import { APP_VERSION, DEFAULT_CENTER, DEFAULT_SPAWNS, TILE_LAYER } from './config.js';
 import { CREATURES, getCreature } from './creatures.js';
-import { getAll, saveCustomSpawn, clear } from './db.js';
+import { getAll, saveCustomSpawn, clear, replaceStores } from './db.js';
 import { buildImportPreview, downloadBackup, mergeBackup, parseBackupFile, replaceBackup, shareBackup } from './backup.js';
 import { distanceMeters, formatDistance, signalFromDistance, randomOffsetLatLng } from './geo.js';
 import { EncounterController } from './encounter.js';
@@ -45,6 +45,9 @@ const els = {
     motionBtn: $('motionBtn'),
     title: $('encounterTitle'),
     hint: $('encounterHint'),
+    confirm: $('catchConfirm'),
+    confirmText: $('catchConfirmText'),
+    confirmCreature: $('catchConfirmCreature'),
   },
 };
 
@@ -89,17 +92,17 @@ function escapeHtml(value) {
 
 function formatDateTime(value) {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Unknown time';
-  return date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+  if (Number.isNaN(date.getTime())) return 'Okänd tid';
+  return date.toLocaleString('sv-SE', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 function getCatchDisplay(record) {
   const creature = getCreature(record.creatureId);
   return {
-    name: record.creatureName || creature.name || record.creatureId || 'Unknown creature',
-    rarity: record.rarity || creature.rarity || 'Unknown',
+    name: record.creatureName || creature.name || record.creatureId || 'Okänd figur',
+    rarity: record.rarity || creature.rarity || 'Okänd',
     caughtAt: formatDateTime(record.caughtAt),
-    spawnLabel: record.spawnLabel || record.spawnId || 'Unknown zone',
+    spawnLabel: record.spawnLabel || record.spawnId || 'Okänd zon',
   };
 }
 
@@ -118,9 +121,32 @@ function makeCatchCard(record, { includeZone = false } = {}) {
   return item;
 }
 
+
+function recordTime(record) {
+  return Date.parse(record.updatedAt || record.caughtAt || record.createdAt || '1970-01-01T00:00:00.000Z');
+}
+
+function dedupeCatchesBySpawn(catches) {
+  const byKey = new Map();
+  for (const record of catches) {
+    const key = record.spawnId || record.id;
+    const existing = byKey.get(key);
+    if (!existing || recordTime(record) >= recordTime(existing)) byKey.set(key, record);
+  }
+  return [...byKey.values()];
+}
+
+function getCatchForSpawn(spawnId) {
+  return state.catches.find((record) => record.spawnId === spawnId);
+}
+
+function isSpawnCaught(spawnId) {
+  return Boolean(getCatchForSpawn(spawnId));
+}
+
 function initMap() {
   if (!window.L) {
-    setStatus('Leaflet failed to load');
+    setStatus('Leaflet kunde inte laddas');
     return;
   }
 
@@ -140,7 +166,7 @@ function initMap() {
   state.map.on('click', (event) => {
     state.selectedSpawnId = null;
     updateNearest();
-    setStatus(`Map point: ${event.latlng.lat.toFixed(5)}, ${event.latlng.lng.toFixed(5)}`);
+    setStatus(`Kartpunkt: ${event.latlng.lat.toFixed(5)}, ${event.latlng.lng.toFixed(5)}`);
   });
 }
 
@@ -151,10 +177,12 @@ function renderSpawns() {
 
   for (const spawn of state.spawns) {
     const creature = getCreature(spawn.creatureId);
+    const caught = isSpawnCaught(spawn.id);
+    const spawnColor = caught ? '#c8ccd6' : spawn.source === 'custom' ? '#9ff6ce' : '#7cc9ff';
     const zone = L.circle([spawn.lat, spawn.lng], {
       radius: spawn.radiusM,
-      color: spawn.source === 'custom' ? '#9ff6ce' : '#7cc9ff',
-      fillColor: spawn.source === 'custom' ? '#9ff6ce' : '#7cc9ff',
+      color: spawnColor,
+      fillColor: spawnColor,
       fillOpacity: 0.13,
       weight: 2,
     }).addTo(state.spawnLayer);
@@ -162,7 +190,7 @@ function renderSpawns() {
     const marker = L.circleMarker([spawn.lat, spawn.lng], {
       radius: 9,
       color: '#ffffff',
-      fillColor: spawn.source === 'custom' ? '#9ff6ce' : '#7cc9ff',
+      fillColor: spawnColor,
       fillOpacity: 0.95,
       weight: 2,
     }).addTo(state.spawnLayer);
@@ -171,7 +199,8 @@ function renderSpawns() {
       <div class="spawn-popup">
         <strong>${creature.name}</strong><br />
         ${spawn.label}<br />
-        Radius: ${spawn.radiusM} m
+        Status: ${caught ? 'fångad' : 'ledig'}<br />
+        Radie: ${spawn.radiusM} m
       </div>
     `);
     marker.on('click', () => {
@@ -197,7 +226,7 @@ function updateUserPosition(position, { simulated = false, accuracy = null } = {
       weight: 3,
       fillColor: '#ffffff',
       fillOpacity: 1,
-    }).addTo(state.map).bindTooltip('You / simulated position');
+    }).addTo(state.map).bindTooltip('Du / simulerad position');
   } else {
     state.userMarker.setLatLng(latLng);
   }
@@ -246,45 +275,67 @@ function updateNearest() {
   }
 
   state.nearest = nearest;
-  state.active = nearest?.inside ? nearest : null;
+  const nearestCaught = nearest ? isSpawnCaught(nearest.spawn.id) : false;
+  state.active = nearest?.inside && !nearestCaught ? nearest : null;
 
   for (const [id, layers] of state.spawnZones) {
     const selectedOrActive = id === nearest?.spawn.id;
+    const caught = isSpawnCaught(id);
+    const spawn = state.spawns.find((item) => item.id === id);
+    const normalColor = spawn?.source === 'custom' ? '#9ff6ce' : '#7cc9ff';
+    const color = caught ? '#c8ccd6' : normalColor;
     layers.zone.setStyle({
-      fillOpacity: selectedOrActive ? 0.26 : 0.13,
+      fillOpacity: caught ? 0.08 : selectedOrActive ? 0.26 : 0.13,
       weight: selectedOrActive ? 4 : 2,
+      color,
+      fillColor: color,
     });
-    layers.marker.setStyle({ radius: selectedOrActive ? 12 : 9 });
+    layers.marker.setStyle({
+      radius: selectedOrActive ? 12 : 9,
+      fillColor: color,
+    });
   }
 
   if (!state.position) {
-    els.nearestName.textContent = 'No location yet';
-    els.nearestDetails.textContent = 'Allow location, spawn a test creature, or use simulation mode.';
+    els.nearestName.textContent = 'Ingen plats än';
+    els.nearestDetails.textContent = 'Tillåt plats, skapa en testfigur eller använd simulering.';
     els.signalBadge.textContent = '0%';
     els.signalBar.style.width = '0%';
     els.encounterBtn.disabled = true;
-    setStatus('Waiting for location');
+    els.encounterBtn.textContent = 'Öppna kamerafångst';
+    setStatus('Väntar på plats');
     return;
   }
 
   if (!nearest) {
-    els.nearestName.textContent = 'No spawns configured';
-    els.nearestDetails.textContent = 'Create a local test spawn to begin.';
+    els.nearestName.textContent = 'Inga zoner finns';
+    els.nearestDetails.textContent = 'Skapa en lokal testzon för att börja.';
     els.signalBadge.textContent = '0%';
     els.signalBar.style.width = '0%';
     els.encounterBtn.disabled = true;
+    els.encounterBtn.textContent = 'Öppna kamerafångst';
     return;
   }
 
   const creature = getCreature(nearest.spawn.creatureId);
-  els.nearestName.textContent = nearest.inside ? `${creature.name} is here` : `${creature.name} signal`;
-  els.nearestDetails.textContent = `${nearest.spawn.label}: ${formatDistance(nearest.distance)} away. Zone radius: ${nearest.spawn.radiusM} m.`;
+  const alreadyCaught = isSpawnCaught(nearest.spawn.id);
+  els.nearestName.textContent = alreadyCaught
+    ? `${creature.name} är redan fångad`
+    : nearest.inside
+      ? `${creature.name} är här`
+      : `${creature.name}-signal`;
+  els.nearestDetails.textContent = `${nearest.spawn.label}: ${formatDistance(nearest.distance)} bort. Zonradie: ${nearest.spawn.radiusM} m.`;
   els.signalBadge.textContent = `${nearest.signal}%`;
   els.signalBar.style.width = `${nearest.signal}%`;
-  els.encounterBtn.disabled = !nearest.inside;
+  els.encounterBtn.disabled = !nearest.inside || alreadyCaught;
+  els.encounterBtn.textContent = alreadyCaught ? 'Redan fångad i denna zon' : 'Öppna kamerafångst';
 
-  const mode = state.simulated ? 'Simulation' : 'GPS';
-  setStatus(nearest.inside ? `${mode}: encounter available` : `${mode}: nearest ${formatDistance(nearest.distance)}`);
+  const mode = state.simulated ? 'Simulering' : 'GPS';
+  setStatus(alreadyCaught
+    ? `${mode}: zonen är redan fångad`
+    : nearest.inside
+      ? `${mode}: fångst tillgänglig`
+      : `${mode}: närmast ${formatDistance(nearest.distance)}`);
 }
 
 async function loadLocalData() {
@@ -294,7 +345,11 @@ async function loadLocalData() {
       getAll('catches'),
     ]);
     state.spawns = [...DEFAULT_SPAWNS, ...customSpawns];
-    state.catches = catches.sort((a, b) => b.caughtAt.localeCompare(a.caughtAt));
+    const dedupedCatches = dedupeCatchesBySpawn(catches);
+    if (dedupedCatches.length !== catches.length) {
+      await replaceStores({ catches: dedupedCatches });
+    }
+    state.catches = dedupedCatches.sort((a, b) => b.caughtAt.localeCompare(a.caughtAt));
   } catch (error) {
     console.warn('IndexedDB unavailable or failed:', error);
     state.spawns = [...DEFAULT_SPAWNS];
@@ -305,7 +360,7 @@ async function loadLocalData() {
 function renderCollection() {
   els.catchCount.textContent = String(state.catches.length);
   if (state.catches.length === 0) {
-    els.collectionList.innerHTML = '<p class="muted">Nothing caught yet. Enter a geozone and open the scanner.</p>';
+    els.collectionList.innerHTML = '<p class="muted">Inget fångat än. Gå in i en geozon och öppna skannern.</p>';
     return;
   }
 
@@ -317,11 +372,11 @@ function renderCollection() {
 
 function requestLocation() {
   if (!navigator.geolocation) {
-    setStatus('Geolocation unavailable');
+    setStatus('Geolokalisering saknas');
     return;
   }
 
-  setStatus('Requesting location…');
+  setStatus('Hämtar plats…');
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       const position = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -331,7 +386,7 @@ function requestLocation() {
     },
     (error) => {
       console.warn(error);
-      setStatus('Location blocked — use simulation');
+      setStatus('Plats blockerad — använd simulering');
     },
     { enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 },
   );
@@ -362,7 +417,7 @@ async function spawnHere() {
   const spawn = {
     id: `custom-${Date.now()}`,
     creatureId,
-    label: `Local test signal for ${creature.name}`,
+    label: `Lokal testsignal för ${creature.name}`,
     ...randomOffsetLatLng(base, 8),
     radiusM: 65,
     source: 'custom',
@@ -390,7 +445,9 @@ async function resetCatches() {
   await clear('catches');
   state.catches = [];
   renderCollection();
-  setStatus('Catches reset');
+  renderSpawns();
+  updateNearest();
+  setStatus('Fångster nollställda');
 }
 
 function chooseBackupFile() {
@@ -417,25 +474,25 @@ function closeRestoreModal() {
 function renderRestoreModal(backup, preview) {
   state.pendingRestore = { backup, preview };
 
-  const exported = preview.exportedAt ? formatDateTime(preview.exportedAt) : 'Unknown';
+  const exported = preview.exportedAt ? formatDateTime(preview.exportedAt) : 'Okänd';
   const changes = preview.newCatches.length + preview.newSpawns.length + preview.updatedSpawns.length;
 
   els.restore.summary.innerHTML = `
-    <div class="restore-stat"><strong>${preview.newCatches.length}</strong><span>New catches to add</span></div>
-    <div class="restore-stat"><strong>${preview.duplicateCatches.length}</strong><span>Already on this phone</span></div>
-    <div class="restore-stat"><strong>${preview.newSpawns.length + preview.updatedSpawns.length}</strong><span>Custom zones to add/update</span></div>
+    <div class="restore-stat"><strong>${preview.newCatches.length}</strong><span>Nya fångster att lägga till</span></div>
+    <div class="restore-stat"><strong>${preview.duplicateCatches.length}</strong><span>Finns redan på telefonen</span></div>
+    <div class="restore-stat"><strong>${preview.newSpawns.length + preview.updatedSpawns.length}</strong><span>Egna zoner att lägga till/uppdatera</span></div>
   `;
 
   els.restore.catchList.innerHTML = '';
   if (preview.newCatches.length === 0) {
     const note = document.createElement('p');
     note.className = 'restore-note';
-    note.textContent = `No new catches were found in this backup. Exported: ${exported}.`;
+    note.textContent = `Inga nya fångster hittades i denna backup. Exporterad: ${exported}.`;
     els.restore.catchList.appendChild(note);
   } else {
     const note = document.createElement('p');
     note.className = 'restore-note';
-    note.textContent = `Backup exported ${exported}. Review the new catches below before adding them to this phone.`;
+    note.textContent = `Backup exporterad ${exported}. Granska de nya fångsterna innan de läggs till på den här telefonen.`;
     els.restore.catchList.appendChild(note);
 
     for (const record of preview.newCatches.slice(0, 30)) {
@@ -445,16 +502,16 @@ function renderRestoreModal(backup, preview) {
     if (preview.newCatches.length > 30) {
       const more = document.createElement('p');
       more.className = 'tiny';
-      more.textContent = `Showing 30 of ${preview.newCatches.length} new catches. All new catches will be added if you confirm.`;
+      more.textContent = `Visar 30 av ${preview.newCatches.length} nya fångster. Alla nya fångster läggs till om du bekräftar.`;
       els.restore.catchList.appendChild(more);
     }
   }
 
   els.restore.mergeBtn.textContent = changes === 0
-    ? 'Nothing new to add'
+    ? 'Inget nytt att lägga till'
     : preview.newCatches.length > 0
-      ? `Add ${preview.newCatches.length} catches`
-      : 'Apply zone updates';
+      ? `Lägg till ${preview.newCatches.length} fångster`
+      : 'Uppdatera zoner';
   els.restore.mergeBtn.disabled = changes === 0;
   els.restore.modal.classList.remove('hidden');
   els.restore.modal.setAttribute('aria-hidden', 'false');
@@ -463,22 +520,22 @@ function renderRestoreModal(backup, preview) {
 async function handleShareBackup() {
   try {
     const result = await shareBackup();
-    if (result.reason === 'cancelled') setStatus('Backup sharing cancelled');
-    else if (result.method === 'download') setStatus('Share unavailable — backup downloaded');
-    else setStatus('Backup ready to share');
+    if (result.reason === 'cancelled') setStatus('Delning av backup avbröts');
+    else if (result.method === 'download') setStatus('Delning saknas — backup laddades ned');
+    else setStatus('Backup redo att delas');
   } catch (error) {
     console.error(error);
-    setStatus('Backup share failed');
+    setStatus('Backupdelning misslyckades');
   }
 }
 
 async function handleDownloadBackup() {
   try {
     await downloadBackup();
-    setStatus('Backup downloaded');
+    setStatus('Backup laddades ned');
   } catch (error) {
     console.error(error);
-    setStatus('Backup download failed');
+    setStatus('Nedladdning av backup misslyckades');
   }
 }
 
@@ -491,7 +548,7 @@ async function handleImportBackup() {
     renderRestoreModal(backup, preview);
   } catch (error) {
     console.error(error);
-    setStatus(error.message || 'Could not import backup');
+    setStatus(error.message || 'Kunde inte importera backup');
   }
 }
 
@@ -501,41 +558,51 @@ async function applyMergeRestore() {
     const result = await mergeBackup(state.pendingRestore.backup, state.pendingRestore.preview);
     await refreshAfterRestore();
     closeRestoreModal();
-    setStatus(`Added ${result.catchesAdded} catches`);
+    setStatus(`Lade till ${result.catchesAdded} fångster`);
   } catch (error) {
     console.error(error);
-    setStatus(error.message || 'Merge restore failed');
+    setStatus(error.message || 'Sammanfogning misslyckades');
   }
 }
 
 async function applyReplaceRestore() {
   if (!state.pendingRestore) return;
-  const ok = window.confirm('Replace local save? This deletes the catches and custom zones on this phone, then restores the selected backup.');
+  const ok = window.confirm('Ersätta lokal sparfil? Det tar bort fångster och egna zoner på den här telefonen och återställer vald backup.');
   if (!ok) return;
 
   try {
     const result = await replaceBackup(state.pendingRestore.backup);
     await refreshAfterRestore();
     closeRestoreModal();
-    setStatus(`Restored ${result.catchesRestored} catches`);
+    setStatus(`Återställde ${result.catchesRestored} fångster`);
   } catch (error) {
     console.error(error);
-    setStatus(error.message || 'Replace restore failed');
+    setStatus(error.message || 'Ersättning misslyckades');
   }
 }
 
 async function openEncounter() {
   const active = state.active;
   if (!active) return;
+  if (isSpawnCaught(active.spawn.id)) {
+    setStatus('Den här zonen är redan fångad');
+    updateNearest();
+    return;
+  }
   const creature = getCreature(active.spawn.creatureId);
   await encounter.start({
     creature,
     spawn: active.spawn,
     position: state.position,
     onComplete: (catchRecord) => {
-      state.catches = [catchRecord, ...state.catches];
+      state.catches = [
+        catchRecord,
+        ...state.catches.filter((record) => (record.spawnId || record.id) !== (catchRecord.spawnId || catchRecord.id)),
+      ];
       renderCollection();
-      setStatus(`Caught ${catchRecord.creatureName}`);
+      renderSpawns();
+      updateNearest();
+      setStatus(`${catchRecord.creatureName} fångad`);
     },
   });
 }

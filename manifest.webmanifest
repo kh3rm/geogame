@@ -1,7 +1,7 @@
 {
   "name": "GeoCritter Lens",
   "short_name": "GeoCritter",
-  "description": "A tiny geolocation creature-catching PWA prototype.",
+  "description": "En liten geoplacerad fångst-PWA.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

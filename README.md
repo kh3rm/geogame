@@ -1,154 +1,104 @@
 # GeoCritter Lens
 
-A slim static PWA prototype for a geolocation creature-catching game.
+En liten, statisk PWA-prototyp för geoplacerad figurjakt. Projektet är byggt för GitHub Pages utan backend, npm eller byggsteg.
 
-It uses:
+## Ingår
 
-- Plain JavaScript ES modules
-- Leaflet for the map and geozones
-- PixiJS for the camera/scanner encounter overlay
-- IndexedDB for local caught-creature saves and custom test spawns
-- No backend, no build step, no npm, no Supabase yet
+- Vanilla JavaScript / ES-moduler
+- Leaflet-karta och geozoner
+- PixiJS-baserat kamerafångstläge
+- IndexedDB för lokala fångster, egna testzoner och backupflöde
+- PWA-manifest och service worker
+- JSON-backup med delning/nedladdning/import
+- Svenskt gränssnitt
 
-The prototype is designed to be hosted directly on GitHub Pages.
+## Testa lokalt
 
-## What it demonstrates
-
-- A map with geolocated creature zones
-- Real browser geolocation when the user grants permission
-- A simulation mode for desktop/mobile testing without walking anywhere
-- A local “Spawn here” button that creates a test geozone near your current/simulated location
-- A full-screen camera catch mode
-- A PixiJS scanner/portal reveal effect over the live camera feed
-- A generic creature that emerges, swirls around the camera view with pseudo-depth/trails, and can be caught with a pulse
-- Local collection persistence via IndexedDB
-- JSON save backup download/share and safe merge/replace import
-- Basic installable PWA files: manifest + service worker + icons
-
-## Quick local test
-
-Because camera and geolocation need a secure context, test from localhost rather than opening `index.html` directly from the file system.
+Kör från projektmappen:
 
 ```bash
-cd geocritter-pwa
 python3 -m http.server 8080
 ```
 
-Open:
+Öppna sedan:
 
 ```text
 http://localhost:8080
 ```
 
-Then try:
+Kamera och plats kräver säker kontext. `localhost` fungerar lokalt. GitHub Pages fungerar eftersom sidan serveras via HTTPS.
 
-1. Click **Simulate near**.
-2. Click **Open camera catch mode**.
-3. Allow camera if prompted, or use the fallback demo background.
-4. Wait for the creature to appear.
-5. Click/tap near the creature or use **Pulse capture**.
+## Snabbtest
 
-## Deploy to GitHub Pages
+1. Tryck **Simulera nära**.
+2. Tryck **Öppna kamerafångst**.
+3. Tillåt kamera, eller använd demobakgrunden om kameran blockeras.
+4. Figuren virvlar över kameravyn.
+5. Tryck direkt på figuren fem gånger.
+6. Varje träff ger en liten visuell reaktion.
+7. På femte träffen visas `____ fångad!` i tre sekunder.
+8. Därefter sparas exakt en fångst för den zonen.
 
-1. Create a GitHub repository, for example `geocritter-pwa`.
-2. Copy all files from this folder into the repository root.
-3. Commit and push to `main`.
-4. In GitHub, go to **Settings → Pages**.
-5. Set **Source** to **Deploy from a branch**.
-6. Choose branch `main` and folder `/root`.
-7. Open the published Pages URL.
+## Viktigt om fångster
 
-GitHub Pages serves over HTTPS, which is important for geolocation and camera access.
+Från v0.4 gäller:
 
-## Mobile testing notes
+- en zon/spawn kan bara ge en registrerad fångst
+- fångst sparas först efter fem giltiga träffar
+- missar nära figuren räknas inte
+- äldre dubbla fångster per zon rensas lokalt vid appstart
+- backup/import försöker också hålla fångster unika per zon
 
-- On iPhone/Android, open the GitHub Pages URL in the browser first.
-- Camera permission is requested only when entering the encounter screen.
-- Location permission is requested when tapping **Use my location**.
-- The encounter opens the rear/environment camera when available. The creature is a PixiJS overlay that swirls over the real camera feed; it is not physically anchored to walls, furniture, or the ground.
-- The encounter also works with the fallback background if the camera is unavailable or blocked.
-- iOS may require a user gesture before motion/orientation sensors can be enabled; use the **Enable motion** button inside the encounter. Motion adds a small parallax drift to the swirl.
+## Backup och manuell telefon-till-telefon-sammanfogning
 
-## Backup and manual phone-to-phone merge
+Använd **Dela backup** för att skapa en liten JSON-sparfil och dela den via telefonens delningsmeny, till exempel Mail, Meddelanden, Drive eller AirDrop. Om fildelning inte stöds laddas samma JSON-fil ned i stället.
 
-Version 0.2 added a local backup/restore screen. It is intentionally backend-free.
+Använd **Ladda ned JSON** om du uttryckligen vill spara filen lokalt.
 
-### Export or share a backup
+Använd **Importera backup** för att välja en `geocritter-save-....json`-fil. Appen validerar filen och visar en granskning innan IndexedDB ändras.
 
-Use **Share backup** to create a small JSON save file and send it through the device share sheet when supported. On phones this can usually be shared through Mail, Messages, Drive, AirDrop, etc. If file sharing is unavailable, the app downloads the same JSON file instead.
+Sammanfoga:
 
-Use **Download JSON** when you explicitly want a file download.
+- lägger bara till saknade fångster
+- ignorerar fångster som redan finns på telefonen
+- raderar aldrig lokala fångster
+- visar nya fångster tydligt före bekräftelse
 
-The backup includes:
+Ersätt lokal sparfil:
 
-- caught creatures
-- custom local spawn zones
-- small app settings
+- är ett separat, destruktivt läge
+- kräver extra bekräftelse
+- används främst vid flytt till ny telefon
 
-It does not include bundled creature art, map tiles, camera images, or app files.
+## Publicera på GitHub Pages
 
-### Import a backup
+1. Skapa ett nytt GitHub-repo.
+2. Ladda upp filerna i projektmappen till repo-roten.
+3. Gå till **Settings → Pages**.
+4. Välj **Deploy from branch**.
+5. Välj `main` och `/root`.
+6. Öppna den publicerade Pages-adressen på mobilen.
 
-Use **Import backup** and choose a `geocritter-save-....json` file. The app validates the file and shows a preview before changing IndexedDB.
-
-The normal mode is **Merge**:
-
-- new catches from the backup are shown in a collection-style preview
-- already-present catches are ignored
-- custom zones are added or updated if newer
-- nothing already on the phone is deleted
-
-The advanced mode is **Replace local save**:
-
-- clears local catches and custom zones
-- restores the selected backup
-- asks for an extra confirmation first
-
-For two phones without a backend, use this manual exchange:
-
-1. Phone A: Share backup.
-2. Phone B: Import backup → review new catches → Add new catches.
-3. Phone B: Share backup.
-4. Phone A: Import backup → review new catches → Add new catches.
-
-This is not live cloud sync, but it is simple, transparent, and independent of Supabase or any other backend.
-
-## Files
+## Projektstruktur
 
 ```text
-index.html                 Main app shell
-styles.css                 Layout and visual styling
-manifest.webmanifest       PWA manifest
-service-worker.js          Basic app-shell cache
-assets/icon.svg            SVG icon source
-assets/icon-192.png        PWA icon
-assets/icon-512.png        PWA icon
-src/app.js                 Main application, map, state and UI
-src/config.js              Demo spawns and map config
-src/creatures.js           Creature data
-src/db.js                  IndexedDB wrapper
-src/backup.js              JSON backup/share/import helpers
-src/encounter.js           PixiJS camera catch encounter with swirl overlay
-src/geo.js                 Distance and geolocation helpers
+index.html                 Appens HTML
+styles.css                 Layout och spel-UI
+manifest.webmanifest       PWA-installation
+service-worker.js          Enkel cache för appskalet
+assets/                    Ikoner
+src/app.js                 Huvudflöde, karta, UI, samling
+src/encounter.js           PixiJS-kamerafångst med fem träffar
+src/db.js                  IndexedDB-hjälpare
+src/backup.js              JSON-backup, delning, import och merge
+src/config.js              Demozoner och kartinställningar
+src/creatures.js           Figurer
+src/geo.js                 Avstånd och signalstyrka
 ```
 
-## Design constraints
+## Versionsanteckningar
 
-This is intentionally not true AR. The camera feed is real, but the creature is a stylized PixiJS overlay. In v0.3 the creature swirls around the camera view with trails, pseudo-depth scaling, scanner rings, and optional motion parallax. It does not understand real-world depth or occlusion, so it cannot truly hide behind furniture or stick to a wall. That keeps the game cross-platform and lightweight while still giving the child a convincing “scanner lens” moment.
-
-## Version notes
-
-- v0.2: JSON backup/share/import with merge and replace restore modes.
-- v0.3: camera catch mode now uses a more active swirl encounter over the live camera feed.
-
-## Next upgrades
-
-Good next steps after testing:
-
-- Add sprite-sheet creatures instead of vector-drawn PixiJS shapes
-- Add sound effects and haptics
-- Add a small admin JSON file or Supabase table for spawn points
-- Add quests and rarity rules
-- Add photo-card generation after catch
-- Add better offline asset caching
-- Add a kid-safe content/privacy pass before real use
+- v0.1: första statiska prototypen.
+- v0.2: JSON-backup, delning/import, merge/replace.
+- v0.3: aktivt virvlande kamerafångstläge.
+- v0.4: svenskt gränssnitt, fem direkta träffar krävs, en fångst per zon, tresekunders fångstbekräftelse.

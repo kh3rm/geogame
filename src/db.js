@@ -87,8 +87,30 @@ export async function saveCatch(catchRecord) {
     ...catchRecord,
     updatedAt: catchRecord.updatedAt ?? catchRecord.caughtAt ?? new Date().toISOString(),
   };
-  await put('catches', normalized);
-  return normalized;
+
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction('catches', 'readwrite');
+    const store = transaction.objectStore('catches');
+    const allRequest = store.getAll();
+
+    allRequest.onsuccess = () => {
+      for (const existing of allRequest.result || []) {
+        if (
+          normalized.spawnId &&
+          existing.spawnId === normalized.spawnId &&
+          existing.id !== normalized.id
+        ) {
+          store.delete(existing.id);
+        }
+      }
+      store.put(normalized);
+    };
+
+    transaction.oncomplete = () => resolve(normalized);
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
 }
 
 export async function saveCustomSpawn(spawn) {

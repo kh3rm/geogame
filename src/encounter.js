@@ -8,6 +8,10 @@ function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
+function colorToHex(color) {
+  return `#${Number(color).toString(16).padStart(6, '0')}`;
+}
+
 function nowId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
@@ -127,7 +131,10 @@ export class EncounterController {
     this.environmentGlints = [];
     this.particles = [];
     this.pulses = [];
-    this.captureAttempts = 0;
+    this.requiredHits = 5;
+    this.hitCount = 0;
+    this.hitWiggleTime = 0;
+    this.catchFinalized = false;
     this.orientation = { x: 0, y: 0 };
     this.motionEnabled = false;
     this.boundPointer = null;
@@ -136,7 +143,7 @@ export class EncounterController {
 
   async start({ creature, spawn, position, onComplete }) {
     if (!this.PIXI) {
-      alert('PixiJS failed to load. Check your network connection, then refresh.');
+      alert('PixiJS kunde inte laddas. Kontrollera nätverket och ladda om sidan.');
       return;
     }
 
@@ -146,16 +153,20 @@ export class EncounterController {
     this.onComplete = onComplete;
     this.phase = 'scanning';
     this.phaseTime = 0;
-    this.captureAttempts = 0;
+    this.hitCount = 0;
+    this.hitWiggleTime = 0;
+    this.catchFinalized = false;
     this.particles = [];
     this.pulses = [];
     this.trailPoints = [];
 
     this.el.layer.classList.remove('hidden');
     this.el.layer.setAttribute('aria-hidden', 'false');
-    this.el.title.textContent = `${creature.name} catch mode`;
-    this.el.hint.textContent = 'Opening the camera lens and locking the signal into your surroundings…';
+    this.el.title.textContent = `${creature.name} i fångstläge`;
+    this.el.hint.textContent = 'Öppnar kameran och låser signalen i omgivningen…';
+    this.el.pulseBtn.textContent = `Träffar 0/${this.requiredHits}`;
     this.el.pulseBtn.disabled = true;
+    this.hideCatchConfirm();
 
     await this.startCamera();
     await this.startPixi();
@@ -165,7 +176,7 @@ export class EncounterController {
       const rect = this.el.pixiHost.getBoundingClientRect();
       const x = (event.clientX - rect.left) * (this.app.screen.width / rect.width);
       const y = (event.clientY - rect.top) * (this.app.screen.height / rect.height);
-      this.tryPulse(x, y);
+      this.tryHit(x, y);
     };
     this.el.pixiHost.addEventListener('pointerdown', this.boundPointer);
   }
@@ -370,6 +381,7 @@ export class EncounterController {
     const layout = this.getSwirlLayout(screen);
     const swirl = this.getSwirlPosition(t, layout);
     const centerBob = Math.sin(t * 2.2) * 7;
+    this.hitWiggleTime = Math.max(0, this.hitWiggleTime - dt);
 
     this.updateEnvironmentGlints(t, screen);
     this.drawSwirlPath(layout, t);
@@ -386,7 +398,8 @@ export class EncounterController {
 
     this.creatureRoot.x = this.phase === 'ready' ? swirl.x : revealTargetX;
     this.creatureRoot.y = this.phase === 'ready' ? swirl.y : revealTargetY;
-    this.creatureRoot.rotation = Math.sin(t * 1.45) * 0.045 + Math.cos(swirl.angle) * 0.05;
+    const hitWiggle = this.hitWiggleTime > 0 ? Math.sin(this.hitWiggleTime * 72) * this.hitWiggleTime * 0.42 : 0;
+    this.creatureRoot.rotation = Math.sin(t * 1.45) * 0.045 + Math.cos(swirl.angle) * 0.05 + hitWiggle;
     this.creatureRoot.sparkle.rotation += dt * 3.5;
     this.creatureRoot.sparkle.alpha = 0.42 + Math.sin(t * 6) * 0.42;
 
@@ -414,7 +427,8 @@ export class EncounterController {
       this.portal.scale.set(0.74 + swirl.depth * 0.28 + Math.sin(t * 2.2) * 0.02);
       this.portal.alpha = 0.25 + swirl.depth * 0.16;
       this.creatureRoot.alpha = 1;
-      this.creatureRoot.scale.set(swirl.scale);
+      const hitPop = this.hitWiggleTime > 0 ? 1 + this.hitWiggleTime * 0.35 : 1;
+      this.creatureRoot.scale.set(swirl.scale * hitPop);
       this.creatureRoot.shadow.scale.set(0.7 + swirl.depth * 0.55, 0.76 + swirl.depth * 0.18);
       this.creatureRoot.shadow.alpha = 0.16 + swirl.depth * 0.2;
       this.pushTrailPoint(swirl);
@@ -428,7 +442,13 @@ export class EncounterController {
       this.portal.scale.set(1 + progress * 2.8);
       this.portal.alpha = 1 - progress;
       if (Math.random() < 0.48) this.spawnParticle(this.creatureRoot.x, this.creatureRoot.y, 4.8);
-      if (progress >= 1) this.finishCatch();
+      if (progress >= 1) this.setPhase('confirm');
+    }
+
+    if (this.phase === 'confirm') {
+      this.portal.alpha = 0;
+      this.creatureRoot.alpha = 0;
+      if (this.phaseTime >= 3) this.finishCatch();
     }
 
     this.updateTrail();
@@ -440,18 +460,24 @@ export class EncounterController {
     this.phase = phase;
     this.phaseTime = 0;
     if (phase === 'reveal') {
-      this.el.hint.textContent = 'Signal locked — the creature is entering the camera view.';
+      this.el.hint.textContent = 'Signal låst — figuren kommer in i kameravyn.';
       this.burst(38, this.app.screen.width * 0.5, this.app.screen.height * 0.48);
     }
     if (phase === 'ready') {
-      this.el.hint.textContent = 'It is swirling through the camera view. Tap the creature, or pulse when it crosses the center.';
-      this.el.pulseBtn.disabled = false;
+      this.el.hint.textContent = `Tryck direkt på figuren ${this.requiredHits} gånger för att fånga den.`;
+      this.el.pulseBtn.textContent = `Träffar ${this.hitCount}/${this.requiredHits}`;
+      this.el.pulseBtn.disabled = true;
       this.burst(24, this.creatureRoot.x, this.creatureRoot.y);
     }
     if (phase === 'caught') {
-      this.el.hint.textContent = 'Capture successful — adding it to your collection…';
+      this.el.hint.textContent = 'Fångst lyckades — sparar i samlingen…';
+      this.el.pulseBtn.textContent = `Träffar ${this.requiredHits}/${this.requiredHits}`;
       this.el.pulseBtn.disabled = true;
       this.burst(72, this.creatureRoot.x, this.creatureRoot.y);
+    }
+    if (phase === 'confirm') {
+      this.el.hint.textContent = `${this.creature.name} fångad!`;
+      this.showCatchConfirm();
     }
   }
 
@@ -500,7 +526,7 @@ export class EncounterController {
       const progress = clamp(pulse.age / pulse.life, 0, 1);
       pulse.clear()
         .circle(pulse.cx, pulse.cy, 20 + progress * 260)
-        .stroke({ color: this.creature.accent, width: 5 * (1 - progress), alpha: 0.8 * (1 - progress) });
+        .stroke({ color: pulse.isHit ? this.creature.accent : 0xffffff, width: 5 * (1 - progress), alpha: 0.8 * (1 - progress) });
       if (progress >= 1) {
         pulse.destroy();
         this.pulses.splice(i, 1);
@@ -508,61 +534,69 @@ export class EncounterController {
     }
   }
 
-  tryPulse(x, y) {
+  tryHit(x, y) {
     if (!this.app || this.phase !== 'ready') return;
-    this.captureAttempts += 1;
+
+    const dx = x - this.creatureRoot.x;
+    const dy = y - this.creatureRoot.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const scale = this.creatureRoot.scale?.x ?? 1;
+    const hitRadius = clamp(92 * scale, 68, 130);
 
     const pulse = new this.PIXI.Graphics();
     pulse.cx = x;
     pulse.cy = y;
     pulse.age = 0;
-    pulse.life = 0.72;
+    pulse.life = dist <= hitRadius ? 0.55 : 0.42;
+    pulse.isHit = dist <= hitRadius;
     this.pulses.push(pulse);
     this.app.stage.addChild(pulse);
 
-    const dx = x - this.creatureRoot.x;
-    const dy = y - this.creatureRoot.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const centeredBonus = clamp(1 - dist / 210, 0, 1);
-    const chance = 0.28 + centeredBonus * 0.62 + Math.min(this.captureAttempts, 3) * 0.06;
+    if (dist > hitRadius) {
+      this.el.hint.textContent = `Nästan! Tryck närmare figuren. Träffar ${this.hitCount}/${this.requiredHits}.`;
+      return;
+    }
 
-    if (Math.random() < chance || this.captureAttempts >= 4) {
+    this.hitCount = Math.min(this.requiredHits, this.hitCount + 1);
+    this.hitWiggleTime = 0.34;
+    this.el.pulseBtn.textContent = `Träffar ${this.hitCount}/${this.requiredHits}`;
+    this.el.hint.textContent = this.hitCount < this.requiredHits
+      ? `Träff! ${this.requiredHits - this.hitCount} kvar.`
+      : 'Sista träffen! Fångar figuren…';
+
+    this.burst(16 + this.hitCount * 3, this.creatureRoot.x, this.creatureRoot.y - 16);
+
+    if (this.hitCount >= this.requiredHits) {
       this.setPhase('caught');
-    } else {
-      this.el.hint.textContent = this.captureAttempts === 1
-        ? 'Close — it slipped through the swirl. Tap closer as it passes.'
-        : 'Still unstable. Let it cross the center, then pulse again.';
-      this.burst(12, this.creatureRoot.x, this.creatureRoot.y - 20);
     }
   }
 
   pulseFromButton() {
-    if (!this.app || this.phase !== 'ready') return;
-    this.tryPulse(this.app.screen.width * 0.5, this.app.screen.height * 0.5);
+    // Kept as a no-op compatibility method. Catching is done by direct taps on the creature.
   }
 
   async enableMotion() {
     try {
       const DeviceOrientation = window.DeviceOrientationEvent;
       if (!DeviceOrientation) {
-        this.el.hint.textContent = 'Motion sensors are not available on this device.';
+        this.el.hint.textContent = 'Rörelsesensorer finns inte på den här enheten.';
         return;
       }
       if (typeof DeviceOrientation.requestPermission === 'function') {
         const permission = await DeviceOrientation.requestPermission();
         if (permission !== 'granted') {
-          this.el.hint.textContent = 'Motion permission was not granted. Camera catch mode still works without it.';
+          this.el.hint.textContent = 'Rörelsebehörighet gavs inte. Kameraläget fungerar ändå.';
           return;
         }
       }
       window.addEventListener('deviceorientation', this.boundOrientation, { passive: true });
       this.motionEnabled = true;
-      this.el.motionBtn.textContent = 'Motion on';
+      this.el.motionBtn.textContent = 'Rörelse på';
       this.el.motionBtn.disabled = true;
-      this.el.hint.textContent = 'Motion on — tilt the phone slightly and the swirl will drift with the camera lens.';
+      this.el.hint.textContent = 'Rörelse på — luta telefonen lite så följer virveln kameran.';
     } catch (error) {
       console.warn(error);
-      this.el.hint.textContent = 'Motion setup failed. Camera catch mode still works without it.';
+      this.el.hint.textContent = 'Rörelseinställningen misslyckades. Kameraläget fungerar ändå.';
     }
   }
 
@@ -573,13 +607,28 @@ export class EncounterController {
     this.orientation.y = clamp((beta - 45) / 35, -1, 1);
   }
 
+  showCatchConfirm() {
+    if (!this.el.confirm || !this.el.confirmText || !this.el.confirmCreature) return;
+    this.el.confirmText.textContent = `${this.creature.name} fångad!`;
+    this.el.confirmCreature.style.setProperty('--creature-color', colorToHex(this.creature.color));
+    this.el.confirmCreature.style.setProperty('--creature-accent', colorToHex(this.creature.accent));
+    this.el.confirm.classList.remove('hidden');
+  }
+
+  hideCatchConfirm() {
+    if (!this.el.confirm) return;
+    this.el.confirm.classList.add('hidden');
+  }
+
   async finishCatch() {
+    if (this.catchFinalized) return;
+    this.catchFinalized = true;
     const catchRecord = {
-      id: nowId('catch'),
+      id: this.spawn?.id ? `catch-${this.spawn.id}` : nowId('catch'),
       creatureId: this.creature.id,
       creatureName: this.creature.name,
       spawnId: this.spawn?.id ?? 'unknown',
-      spawnLabel: this.spawn?.label ?? 'Unknown signal',
+      spawnLabel: this.spawn?.label ?? 'Okänd signal',
       rarity: this.creature.rarity,
       caughtAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -604,7 +653,7 @@ export class EncounterController {
     if (this.motionEnabled) {
       window.removeEventListener('deviceorientation', this.boundOrientation);
       this.motionEnabled = false;
-      this.el.motionBtn.textContent = 'Enable motion';
+      this.el.motionBtn.textContent = 'Aktivera rörelse';
       this.el.motionBtn.disabled = false;
     }
     if (this.app) {
@@ -617,5 +666,6 @@ export class EncounterController {
       this.stream = null;
     }
     this.el.video.srcObject = null;
+    this.hideCatchConfirm();
   }
 }

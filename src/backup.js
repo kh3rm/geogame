@@ -20,12 +20,24 @@ function recordTime(record) {
   return Date.parse(record.updatedAt || record.caughtAt || record.createdAt || '1970-01-01T00:00:00.000Z');
 }
 
+function dedupeCatchesBySpawn(catches) {
+  const byKey = new Map();
+  for (const record of normalizeArray(catches)) {
+    const key = record.spawnId || record.id;
+    const existing = byKey.get(key);
+    if (!existing || recordTime(record) >= recordTime(existing)) byKey.set(key, record);
+  }
+  return [...byKey.values()];
+}
+
 export async function exportSave() {
-  const [catches, customSpawns, settings] = await Promise.all([
+  const [rawCatches, customSpawns, settings] = await Promise.all([
     getAll('catches'),
     getAll('customSpawns'),
     getAll('settings'),
   ]);
+
+  const catches = dedupeCatchesBySpawn(rawCatches);
 
   return {
     app: BACKUP_APP_ID,
@@ -78,8 +90,8 @@ export async function downloadBackup() {
 export async function shareBackup() {
   const file = await makeSaveFile();
   const shareData = {
-    title: 'GeoCritter save backup',
-    text: 'GeoCritter save backup file',
+    title: 'GeoCritter-backup',
+    text: 'GeoCritter-backupfil',
     files: [file],
   };
 
@@ -96,7 +108,7 @@ export async function shareBackup() {
       if (error?.name === 'AbortError') {
         return { method: 'share', ok: false, reason: 'cancelled', fileName: file.name };
       }
-      console.warn('Native sharing failed; using download fallback.', error);
+      console.warn('Delning misslyckades; laddar ned backup i stället.', error);
     }
   }
 
@@ -112,19 +124,19 @@ export async function parseBackupFile(file) {
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new Error('The selected file is not valid JSON.');
+    throw new Error('Den valda filen är inte giltig JSON.');
   }
   validateBackup(parsed);
   return parsed;
 }
 
 export function validateBackup(backup) {
-  if (!backup || typeof backup !== 'object') throw new Error('Backup file is empty or invalid.');
-  if (backup.app !== BACKUP_APP_ID) throw new Error('This is not a GeoCritter Lens backup file.');
+  if (!backup || typeof backup !== 'object') throw new Error('Backupfilen är tom eller ogiltig.');
+  if (backup.app !== BACKUP_APP_ID) throw new Error('Det här är inte en GeoCritter Lens-backupfil.');
   if (backup.saveVersion !== BACKUP_VERSION) {
-    throw new Error(`Unsupported backup version ${backup.saveVersion}. Expected version ${BACKUP_VERSION}.`);
+    throw new Error(`Backupversion ${backup.saveVersion} stöds inte. Förväntade version ${BACKUP_VERSION}.`);
   }
-  if (!backup.data || typeof backup.data !== 'object') throw new Error('Backup data section is missing.');
+  if (!backup.data || typeof backup.data !== 'object') throw new Error('Backupfilen saknar datasektion.');
 
   const catches = normalizeArray(backup.data.catches);
   const customSpawns = normalizeArray(backup.data.customSpawns);
@@ -138,39 +150,39 @@ export function validateBackup(backup) {
 }
 
 function validateCatch(record) {
-  if (!record || typeof record !== 'object') throw new Error('A catch record is invalid.');
-  if (typeof record.id !== 'string' || record.id.length < 3) throw new Error('A catch record is missing its id.');
+  if (!record || typeof record !== 'object') throw new Error('En fångstpost är ogiltig.');
+  if (typeof record.id !== 'string' || record.id.length < 3) throw new Error('En fångstpost saknar id.');
   if (typeof record.creatureId !== 'string' || record.creatureId.length < 2) {
-    throw new Error(`Catch ${record.id} is missing creatureId.`);
+    throw new Error(`Fångst ${record.id} saknar creatureId.`);
   }
-  if (!isoOrNull(record.caughtAt)) throw new Error(`Catch ${record.id} has an invalid caughtAt date.`);
+  if (!isoOrNull(record.caughtAt)) throw new Error(`Fångst ${record.id} har ett ogiltigt fångstdatum.`);
 }
 
 function validateCustomSpawn(spawn) {
-  if (!spawn || typeof spawn !== 'object') throw new Error('A custom spawn record is invalid.');
-  if (typeof spawn.id !== 'string' || spawn.id.length < 3) throw new Error('A custom spawn is missing its id.');
+  if (!spawn || typeof spawn !== 'object') throw new Error('En egen zonpost är ogiltig.');
+  if (typeof spawn.id !== 'string' || spawn.id.length < 3) throw new Error('En egen zon saknar id.');
   if (typeof spawn.creatureId !== 'string' || spawn.creatureId.length < 2) {
-    throw new Error(`Custom spawn ${spawn.id} is missing creatureId.`);
+    throw new Error(`Egen zon ${spawn.id} saknar creatureId.`);
   }
   if (typeof spawn.lat !== 'number' || spawn.lat < -90 || spawn.lat > 90) {
-    throw new Error(`Custom spawn ${spawn.id} has invalid latitude.`);
+    throw new Error(`Egen zon ${spawn.id} har ogiltig latitud.`);
   }
   if (typeof spawn.lng !== 'number' || spawn.lng < -180 || spawn.lng > 180) {
-    throw new Error(`Custom spawn ${spawn.id} has invalid longitude.`);
+    throw new Error(`Egen zon ${spawn.id} har ogiltig longitud.`);
   }
   if (typeof spawn.radiusM !== 'number' || spawn.radiusM <= 0 || spawn.radiusM > 10000) {
-    throw new Error(`Custom spawn ${spawn.id} has invalid radius.`);
+    throw new Error(`Egen zon ${spawn.id} har ogiltig radie.`);
   }
 }
 
 function validateSetting(setting) {
-  if (!setting || typeof setting !== 'object') throw new Error('A setting record is invalid.');
-  if (typeof setting.key !== 'string' || !setting.key) throw new Error('A setting record is missing its key.');
+  if (!setting || typeof setting !== 'object') throw new Error('En inställningspost är ogiltig.');
+  if (typeof setting.key !== 'string' || !setting.key) throw new Error('En inställningspost saknar nyckel.');
 }
 
 export async function buildImportPreview(backup) {
   validateBackup(backup);
-  const importedCatches = normalizeArray(backup.data.catches);
+  const importedCatches = dedupeCatchesBySpawn(backup.data.catches);
   const importedSpawns = normalizeArray(backup.data.customSpawns);
 
   const newCatches = [];
@@ -179,10 +191,23 @@ export async function buildImportPreview(backup) {
   const duplicateSpawns = [];
   const updatedSpawns = [];
 
+  const localCatches = await getAll('catches');
+  const localCatchIds = new Set(localCatches.map((record) => record.id));
+  const localSpawnIds = new Set(localCatches.map((record) => record.spawnId).filter(Boolean));
+  const seenImportedSpawnIds = new Set();
+
   for (const record of importedCatches) {
-    const local = await get('catches', record.id);
-    if (local) duplicateCatches.push(record);
-    else newCatches.push(record);
+    const spawnKey = record.spawnId || null;
+    if (
+      localCatchIds.has(record.id) ||
+      (spawnKey && localSpawnIds.has(spawnKey)) ||
+      (spawnKey && seenImportedSpawnIds.has(spawnKey))
+    ) {
+      duplicateCatches.push(record);
+    } else {
+      newCatches.push(record);
+      if (spawnKey) seenImportedSpawnIds.add(spawnKey);
+    }
   }
 
   for (const spawn of importedSpawns) {
@@ -240,7 +265,7 @@ export async function replaceBackup(backup) {
   const current = await exportSave();
   try {
     await replaceStores({
-      catches: normalizeArray(backup.data.catches),
+      catches: dedupeCatchesBySpawn(backup.data.catches),
       customSpawns: normalizeArray(backup.data.customSpawns),
       settings: [
         ...normalizeArray(backup.data.settings),
@@ -253,13 +278,13 @@ export async function replaceBackup(backup) {
       ],
     });
   } catch (error) {
-    console.error('Replace failed. Attempting rollback.', error);
+    console.error('Ersättning misslyckades. Försöker återställa tidigare sparfil.', error);
     await replaceStores({
       catches: normalizeArray(current.data.catches),
       customSpawns: normalizeArray(current.data.customSpawns),
       settings: normalizeArray(current.data.settings),
     });
-    throw new Error('Restore failed. The previous local save was restored.');
+    throw new Error('Återställningen misslyckades. Den tidigare lokala sparfilen återställdes.');
   }
 
   return {
