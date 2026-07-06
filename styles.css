@@ -169,7 +169,6 @@ h2 { font-size: 1.05rem; letter-spacing: -0.02em; }
 }
 .camera-video {
   object-fit: cover;
-  transform: scaleX(-1);
   background: #02050a;
 }
 .camera-fallback {

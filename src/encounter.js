@@ -4,46 +4,53 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
 function nowId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function drawCreatureShape(PIXI, creature) {
+function drawCreatureShape(PIXI, creature, options = {}) {
   const root = new PIXI.Container();
-  root.label = 'creature-root';
+  root.label = options.label ?? 'creature-root';
+
+  const alpha = options.alpha ?? 1;
+  const shadowAlpha = options.shadowAlpha ?? 0.36;
 
   const shadow = new PIXI.Graphics()
     .ellipse(0, 74, 72, 18)
-    .fill({ color: creature.shadow, alpha: 0.36 });
+    .fill({ color: creature.shadow, alpha: shadowAlpha * alpha });
 
   const body = new PIXI.Graphics()
     .roundRect(-54, -42, 108, 104, 42)
-    .fill({ color: creature.color, alpha: 1 })
+    .fill({ color: creature.color, alpha })
     .circle(-25, -10, 14)
     .circle(25, -10, 14)
-    .fill({ color: creature.accent, alpha: 0.55 })
+    .fill({ color: creature.accent, alpha: 0.55 * alpha })
     .circle(-19, -11, 6)
     .circle(19, -11, 6)
-    .fill({ color: 0x08130d, alpha: 1 })
+    .fill({ color: 0x08130d, alpha })
     .circle(-17, -14, 2.3)
     .circle(21, -14, 2.3)
-    .fill({ color: 0xffffff, alpha: 0.9 })
+    .fill({ color: 0xffffff, alpha: 0.9 * alpha })
     .roundRect(-15, 20, 30, 6, 4)
-    .fill({ color: 0x17351f, alpha: 0.62 });
+    .fill({ color: 0x17351f, alpha: 0.62 * alpha });
 
   const leftLeaf = new PIXI.Graphics()
     .ellipse(-32, -60, 12, 30)
-    .fill({ color: 0xbfffd2, alpha: 0.92 });
+    .fill({ color: creature.accent, alpha: 0.92 * alpha });
   leftLeaf.rotation = -0.58;
 
   const rightLeaf = new PIXI.Graphics()
     .ellipse(32, -62, 12, 30)
-    .fill({ color: 0xbfffd2, alpha: 0.92 });
+    .fill({ color: creature.accent, alpha: 0.92 * alpha });
   rightLeaf.rotation = 0.58;
 
   const belly = new PIXI.Graphics()
     .ellipse(0, 27, 27, 20)
-    .fill({ color: 0xffffff, alpha: 0.18 });
+    .fill({ color: 0xffffff, alpha: 0.18 * alpha });
 
   const sparkle = new PIXI.Graphics()
     .moveTo(0, -9)
@@ -55,12 +62,13 @@ function drawCreatureShape(PIXI, creature) {
     .lineTo(-9, 0)
     .lineTo(-3, -3)
     .closePath()
-    .fill({ color: creature.accent, alpha: 0.9 });
+    .fill({ color: creature.accent, alpha: 0.9 * alpha });
   sparkle.x = 48;
   sparkle.y = -46;
 
   root.addChild(shadow, leftLeaf, rightLeaf, body, belly, sparkle);
   root.shadow = shadow;
+  root.body = body;
   root.sparkle = sparkle;
   return root;
 }
@@ -84,6 +92,20 @@ function makeParticle(PIXI, color, x, y, vx, vy, life, size) {
   return g;
 }
 
+function drawStar(PIXI, color, alpha = 0.78) {
+  return new PIXI.Graphics()
+    .moveTo(0, -8)
+    .lineTo(2.5, -2.5)
+    .lineTo(8, 0)
+    .lineTo(2.5, 2.5)
+    .lineTo(0, 8)
+    .lineTo(-2.5, 2.5)
+    .lineTo(-8, 0)
+    .lineTo(-2.5, -2.5)
+    .closePath()
+    .fill({ color, alpha });
+}
+
 export class EncounterController {
   constructor(elements) {
     this.el = elements;
@@ -98,6 +120,11 @@ export class EncounterController {
     this.phaseTime = 0;
     this.creatureRoot = null;
     this.portal = null;
+    this.swirlPath = null;
+    this.swirlRibbon = null;
+    this.trailSprites = [];
+    this.trailPoints = [];
+    this.environmentGlints = [];
     this.particles = [];
     this.pulses = [];
     this.captureAttempts = 0;
@@ -122,11 +149,12 @@ export class EncounterController {
     this.captureAttempts = 0;
     this.particles = [];
     this.pulses = [];
+    this.trailPoints = [];
 
     this.el.layer.classList.remove('hidden');
     this.el.layer.setAttribute('aria-hidden', 'false');
-    this.el.title.textContent = `${creature.name} signal`;
-    this.el.hint.textContent = 'Hold steady while the scanner resolves the signal…';
+    this.el.title.textContent = `${creature.name} catch mode`;
+    this.el.hint.textContent = 'Opening the camera lens and locking the signal into your surroundings…';
     this.el.pulseBtn.disabled = true;
 
     await this.startCamera();
@@ -182,8 +210,11 @@ export class EncounterController {
 
     this.el.pixiHost.appendChild(this.app.canvas);
 
+    this.swirlPath = new PIXI.Graphics();
+    this.swirlRibbon = new PIXI.Graphics();
+
     this.portal = new PIXI.Container();
-    this.portal.label = 'portal';
+    this.portal.label = 'scanner-portal';
     this.creatureRoot = drawCreatureShape(PIXI, this.creature);
     this.creatureRoot.scale.set(0.01);
     this.creatureRoot.alpha = 0;
@@ -206,8 +237,127 @@ export class EncounterController {
     this.portal.halo = halo;
     this.portal.reticle = reticle;
 
-    this.app.stage.addChild(this.portal, this.creatureRoot);
+    this.trailSprites = Array.from({ length: 9 }, (_, i) => {
+      const ghost = new PIXI.Graphics()
+        .ellipse(0, 0, 26, 13)
+        .fill({ color: i % 2 ? this.creature.accent : this.creature.color, alpha: 0.16 });
+      ghost.visible = false;
+      return ghost;
+    });
+
+    this.environmentGlints = Array.from({ length: 10 }, (_, i) => {
+      const star = drawStar(PIXI, i % 2 ? this.creature.accent : 0xffffff, 0.55);
+      star.anchorRatio = {
+        x: 0.12 + ((i * 0.173) % 0.76),
+        y: 0.16 + ((i * 0.257) % 0.62),
+      };
+      star.speed = 0.6 + i * 0.11;
+      star.scale.set(0.3 + (i % 4) * 0.08);
+      star.alpha = 0;
+      return star;
+    });
+
+    this.app.stage.addChild(
+      ...this.environmentGlints,
+      this.swirlPath,
+      this.swirlRibbon,
+      this.portal,
+      ...this.trailSprites,
+      this.creatureRoot,
+    );
     this.app.ticker.add((ticker) => this.tick(ticker.deltaTime / 60));
+  }
+
+  getSwirlLayout(screen) {
+    const safeWidth = Math.max(320, screen.width);
+    const safeHeight = Math.max(480, screen.height);
+    return {
+      centerX: safeWidth * 0.5 + this.orientation.x * 38,
+      centerY: safeHeight * 0.48 + this.orientation.y * 28,
+      radiusX: clamp(safeWidth * 0.29, 92, 260),
+      radiusY: clamp(safeHeight * 0.18, 72, 175),
+    };
+  }
+
+  getSwirlPosition(t, layout) {
+    const angle = t * 1.18;
+    const wobble = Math.sin(t * 2.35) * 0.22;
+    const depth = (Math.sin(angle + 0.55) + 1) / 2;
+    return {
+      x: layout.centerX + Math.cos(angle + wobble) * layout.radiusX,
+      y: layout.centerY + Math.sin(angle * 1.08) * layout.radiusY + Math.sin(t * 3.1) * 10,
+      angle,
+      depth,
+      scale: 0.64 + depth * 0.42 + Math.sin(t * 3.4) * 0.025,
+    };
+  }
+
+  updateEnvironmentGlints(t, screen) {
+    for (const glint of this.environmentGlints) {
+      glint.x = screen.width * glint.anchorRatio.x + this.orientation.x * 22;
+      glint.y = screen.height * glint.anchorRatio.y + this.orientation.y * 16;
+      glint.rotation += 0.018 * glint.speed;
+      const scanAlpha = this.phase === 'scanning' ? 0.28 : this.phase === 'reveal' ? 0.5 : 0.34;
+      glint.alpha = scanAlpha * (0.35 + Math.sin(t * glint.speed + glint.x * 0.01) * 0.35);
+    }
+  }
+
+  drawSwirlPath(layout, t) {
+    if (!this.swirlPath) return;
+    this.swirlPath.clear();
+    const alpha = this.phase === 'ready' ? 0.23 : this.phase === 'reveal' ? 0.18 : 0.08;
+    this.swirlPath
+      .ellipse(layout.centerX, layout.centerY, layout.radiusX, layout.radiusY)
+      .stroke({ color: this.creature.accent, width: 2, alpha });
+
+    this.swirlPath
+      .ellipse(
+        layout.centerX + Math.sin(t * 0.7) * 10,
+        layout.centerY + Math.cos(t * 0.8) * 6,
+        layout.radiusX * 0.72,
+        layout.radiusY * 0.58,
+      )
+      .stroke({ color: 0xffffff, width: 1, alpha: alpha * 0.62 });
+  }
+
+  pushTrailPoint(position) {
+    this.trailPoints.unshift({
+      x: position.x,
+      y: position.y,
+      scale: position.scale,
+      depth: position.depth,
+    });
+    if (this.trailPoints.length > 32) this.trailPoints.pop();
+  }
+
+  updateTrail() {
+    for (let i = 0; i < this.trailSprites.length; i += 1) {
+      const point = this.trailPoints[(i + 1) * 2];
+      const sprite = this.trailSprites[i];
+      if (!point || this.phase !== 'ready') {
+        sprite.visible = false;
+        continue;
+      }
+      const fade = 1 - i / this.trailSprites.length;
+      sprite.visible = true;
+      sprite.x = point.x;
+      sprite.y = point.y;
+      sprite.scale.set(point.scale * (0.76 - i * 0.035));
+      sprite.rotation += 0.025 + i * 0.004;
+      sprite.alpha = 0.18 * fade;
+    }
+
+    if (!this.swirlRibbon) return;
+    this.swirlRibbon.clear();
+    if (this.phase !== 'ready' || this.trailPoints.length < 4) return;
+
+    const head = this.trailPoints[0];
+    this.swirlRibbon.moveTo(head.x, head.y);
+    for (let i = 1; i < Math.min(this.trailPoints.length, 18); i += 1) {
+      const point = this.trailPoints[i];
+      this.swirlRibbon.lineTo(point.x, point.y);
+    }
+    this.swirlRibbon.stroke({ color: this.creature.accent, width: 4, alpha: 0.18 });
   }
 
   tick(dt) {
@@ -217,21 +367,26 @@ export class EncounterController {
     const t = performance.now() / 1000;
     this.phaseTime += dt;
 
-    const baseX = screen.width * 0.5 + this.orientation.x * 28;
-    const baseY = screen.height * 0.48 + this.orientation.y * 20;
-    const bob = Math.sin(t * 2.2) * 8;
-    const drift = Math.sin(t * 1.1) * 18;
+    const layout = this.getSwirlLayout(screen);
+    const swirl = this.getSwirlPosition(t, layout);
+    const centerBob = Math.sin(t * 2.2) * 7;
 
-    this.portal.x = baseX;
-    this.portal.y = baseY + bob * 0.3;
+    this.updateEnvironmentGlints(t, screen);
+    this.drawSwirlPath(layout, t);
+
+    this.portal.x = this.phase === 'ready' ? swirl.x : layout.centerX;
+    this.portal.y = this.phase === 'ready' ? swirl.y : layout.centerY + centerBob * 0.3;
     this.portal.inner.rotation += dt * 1.8;
     this.portal.outer.rotation -= dt * 0.9;
     this.portal.halo.scale.set(1 + Math.sin(t * 2.6) * 0.07);
     this.portal.reticle.alpha = 0.52 + Math.sin(t * 4) * 0.2;
 
-    this.creatureRoot.x = baseX + drift;
-    this.creatureRoot.y = baseY + 18 + bob;
-    this.creatureRoot.rotation = Math.sin(t * 1.45) * 0.045;
+    const revealTargetX = lerp(layout.centerX, swirl.x, clamp(this.phaseTime / 1.2, 0, 1));
+    const revealTargetY = lerp(layout.centerY + 18, swirl.y, clamp(this.phaseTime / 1.2, 0, 1));
+
+    this.creatureRoot.x = this.phase === 'ready' ? swirl.x : revealTargetX;
+    this.creatureRoot.y = this.phase === 'ready' ? swirl.y : revealTargetY;
+    this.creatureRoot.rotation = Math.sin(t * 1.45) * 0.045 + Math.cos(swirl.angle) * 0.05;
     this.creatureRoot.sparkle.rotation += dt * 3.5;
     this.creatureRoot.sparkle.alpha = 0.42 + Math.sin(t * 6) * 0.42;
 
@@ -239,28 +394,31 @@ export class EncounterController {
       const progress = clamp(this.phaseTime / 2.2, 0, 1);
       this.portal.scale.set(0.6 + progress * 0.7 + Math.sin(t * 12) * 0.015);
       this.portal.alpha = 0.22 + progress * 0.72;
-      this.creatureRoot.alpha = progress * 0.24;
-      this.creatureRoot.scale.set(0.42 + progress * 0.22);
+      this.creatureRoot.alpha = progress * 0.18;
+      this.creatureRoot.scale.set(0.38 + progress * 0.24);
       if (this.phaseTime > 2.25) this.setPhase('reveal');
     }
 
     if (this.phase === 'reveal') {
-      const progress = clamp(this.phaseTime / 1.2, 0, 1);
+      const progress = clamp(this.phaseTime / 1.45, 0, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
-      this.portal.scale.set(1.22 - eased * 0.16);
+      this.portal.scale.set(1.22 - eased * 0.18);
       this.portal.alpha = 0.95 - progress * 0.28;
-      this.creatureRoot.alpha = 0.24 + eased * 0.76;
-      this.creatureRoot.scale.set(0.58 + Math.sin(progress * Math.PI) * 0.28 + eased * 0.32);
-      if (Math.random() < 0.32) this.spawnParticle(baseX, baseY, 1.5);
-      if (this.phaseTime > 1.2) this.setPhase('ready');
+      this.creatureRoot.alpha = 0.22 + eased * 0.78;
+      this.creatureRoot.scale.set(0.54 + Math.sin(progress * Math.PI) * 0.25 + eased * 0.38);
+      if (Math.random() < 0.32) this.spawnParticle(layout.centerX, layout.centerY, 1.5);
+      if (this.phaseTime > 1.45) this.setPhase('ready');
     }
 
     if (this.phase === 'ready') {
-      this.portal.scale.set(1.04 + Math.sin(t * 2.2) * 0.03);
-      this.portal.alpha = 0.43;
+      this.portal.scale.set(0.74 + swirl.depth * 0.28 + Math.sin(t * 2.2) * 0.02);
+      this.portal.alpha = 0.25 + swirl.depth * 0.16;
       this.creatureRoot.alpha = 1;
-      this.creatureRoot.scale.set(0.94 + Math.sin(t * 2.2) * 0.025);
-      if (Math.random() < 0.09) this.spawnParticle(this.creatureRoot.x, this.creatureRoot.y - 20, 1);
+      this.creatureRoot.scale.set(swirl.scale);
+      this.creatureRoot.shadow.scale.set(0.7 + swirl.depth * 0.55, 0.76 + swirl.depth * 0.18);
+      this.creatureRoot.shadow.alpha = 0.16 + swirl.depth * 0.2;
+      this.pushTrailPoint(swirl);
+      if (Math.random() < 0.12) this.spawnParticle(this.creatureRoot.x, this.creatureRoot.y - 20, 1);
     }
 
     if (this.phase === 'caught') {
@@ -273,6 +431,7 @@ export class EncounterController {
       if (progress >= 1) this.finishCatch();
     }
 
+    this.updateTrail();
     this.updateParticles(PIXI, dt);
     this.updatePulses(dt);
   }
@@ -281,11 +440,11 @@ export class EncounterController {
     this.phase = phase;
     this.phaseTime = 0;
     if (phase === 'reveal') {
-      this.el.hint.textContent = 'Signal locked — something is coming through.';
+      this.el.hint.textContent = 'Signal locked — the creature is entering the camera view.';
       this.burst(38, this.app.screen.width * 0.5, this.app.screen.height * 0.48);
     }
     if (phase === 'ready') {
-      this.el.hint.textContent = 'Tap the creature or use Pulse capture when it is centered.';
+      this.el.hint.textContent = 'It is swirling through the camera view. Tap the creature, or pulse when it crosses the center.';
       this.el.pulseBtn.disabled = false;
       this.burst(24, this.creatureRoot.x, this.creatureRoot.y);
     }
@@ -371,9 +530,8 @@ export class EncounterController {
       this.setPhase('caught');
     } else {
       this.el.hint.textContent = this.captureAttempts === 1
-        ? 'Close — it dodged the pulse. Try tapping closer to the creature.'
-        : 'Still unstable. Wait for the bob, then pulse again.';
-      this.creatureRoot.x += (Math.random() > 0.5 ? 1 : -1) * 54;
+        ? 'Close — it slipped through the swirl. Tap closer as it passes.'
+        : 'Still unstable. Let it cross the center, then pulse again.';
       this.burst(12, this.creatureRoot.x, this.creatureRoot.y - 20);
     }
   }
@@ -393,7 +551,7 @@ export class EncounterController {
       if (typeof DeviceOrientation.requestPermission === 'function') {
         const permission = await DeviceOrientation.requestPermission();
         if (permission !== 'granted') {
-          this.el.hint.textContent = 'Motion permission was not granted. Scanner still works without it.';
+          this.el.hint.textContent = 'Motion permission was not granted. Camera catch mode still works without it.';
           return;
         }
       }
@@ -401,9 +559,10 @@ export class EncounterController {
       this.motionEnabled = true;
       this.el.motionBtn.textContent = 'Motion on';
       this.el.motionBtn.disabled = true;
+      this.el.hint.textContent = 'Motion on — tilt the phone slightly and the swirl will drift with the camera lens.';
     } catch (error) {
       console.warn(error);
-      this.el.hint.textContent = 'Motion setup failed. Scanner still works without it.';
+      this.el.hint.textContent = 'Motion setup failed. Camera catch mode still works without it.';
     }
   }
 

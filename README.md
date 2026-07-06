@@ -18,9 +18,9 @@ The prototype is designed to be hosted directly on GitHub Pages.
 - Real browser geolocation when the user grants permission
 - A simulation mode for desktop/mobile testing without walking anywhere
 - A local “Spawn here” button that creates a test geozone near your current/simulated location
-- A full-screen camera encounter
-- A PixiJS scanner/portal reveal effect
-- A generic creature that emerges and can be caught with a pulse
+- A full-screen camera catch mode
+- A PixiJS scanner/portal reveal effect over the live camera feed
+- A generic creature that emerges, swirls around the camera view with pseudo-depth/trails, and can be caught with a pulse
 - Local collection persistence via IndexedDB
 - JSON save backup download/share and safe merge/replace import
 - Basic installable PWA files: manifest + service worker + icons
@@ -43,7 +43,7 @@ http://localhost:8080
 Then try:
 
 1. Click **Simulate near**.
-2. Click **Open scanner encounter**.
+2. Click **Open camera catch mode**.
 3. Allow camera if prompted, or use the fallback demo background.
 4. Wait for the creature to appear.
 5. Click/tap near the creature or use **Pulse capture**.
@@ -65,12 +65,13 @@ GitHub Pages serves over HTTPS, which is important for geolocation and camera ac
 - On iPhone/Android, open the GitHub Pages URL in the browser first.
 - Camera permission is requested only when entering the encounter screen.
 - Location permission is requested when tapping **Use my location**.
+- The encounter opens the rear/environment camera when available. The creature is a PixiJS overlay that swirls over the real camera feed; it is not physically anchored to walls, furniture, or the ground.
 - The encounter also works with the fallback background if the camera is unavailable or blocked.
-- iOS may require a user gesture before motion/orientation sensors can be enabled; use the **Enable motion** button inside the encounter.
+- iOS may require a user gesture before motion/orientation sensors can be enabled; use the **Enable motion** button inside the encounter. Motion adds a small parallax drift to the swirl.
 
 ## Backup and manual phone-to-phone merge
 
-Version 0.2 adds a local backup/restore screen. It is intentionally backend-free.
+Version 0.2 added a local backup/restore screen. It is intentionally backend-free.
 
 ### Export or share a backup
 
@@ -127,13 +128,18 @@ src/config.js              Demo spawns and map config
 src/creatures.js           Creature data
 src/db.js                  IndexedDB wrapper
 src/backup.js              JSON backup/share/import helpers
-src/encounter.js           PixiJS camera/scanner encounter
+src/encounter.js           PixiJS camera catch encounter with swirl overlay
 src/geo.js                 Distance and geolocation helpers
 ```
 
 ## Design constraints
 
-This is intentionally not true AR. The camera feed is real, but the creature is a stylized PixiJS overlay. That keeps the game cross-platform and lightweight while still giving the child a convincing “scanner lens” moment.
+This is intentionally not true AR. The camera feed is real, but the creature is a stylized PixiJS overlay. In v0.3 the creature swirls around the camera view with trails, pseudo-depth scaling, scanner rings, and optional motion parallax. It does not understand real-world depth or occlusion, so it cannot truly hide behind furniture or stick to a wall. That keeps the game cross-platform and lightweight while still giving the child a convincing “scanner lens” moment.
+
+## Version notes
+
+- v0.2: JSON backup/share/import with merge and replace restore modes.
+- v0.3: camera catch mode now uses a more active swirl encounter over the live camera feed.
 
 ## Next upgrades
 
