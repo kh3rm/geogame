@@ -16,7 +16,24 @@ En liten, statisk PWA-prototyp för geoplacerad figurjakt. Projektet är byggt f
 - Detaljvy för tidigare fångster med karta
 - Dold, mobiloptimerad adminvy för att bygga och aktivera promenader
 - Slimmad, illustrerad header med två klickbara animerade barnfigurer
+- Tillfällig temaväxlare i headern med fem genomarbetade alternativa helsidesteman
 - Lokala figurpaket med egna namn, beskrivningar och bildfiler
+
+
+## Tillfälliga teman
+
+Headern har sex små ikonknappar: standardtemat plus fem alternativa testteman. De är tänkta som en snabb designlab-yta medan vi provar vad som passar spelets ton bäst. Valet sparas lokalt i webbläsaren.
+
+Teman:
+
+- **Nattlins** – nuvarande mörka scannerkänsla.
+- **Fjärilsäng** – ljust, mjukt och inspirerat av Annie-fjärilsexemplet, men med GeoCritters mint/rosa/ängspalett.
+- **Skogsstig** – mer natur, mörkgrönt, kart-/vandringston och tätare paneler.
+- **Papperskarta** – ljus kartbokskänsla med krämig bakgrund, tydligare ramar och mindre glassmorphism.
+- **Neonradar** – arkad/scanner med hårdare kontraster, glow och kantigare UI.
+- **Rymdscanner** – mjukare kosmisk scanner med större rundningar och transparenta paneler.
+
+Dessa teman ändrar mer än accentfärger: bakgrundsstruktur, paneler, radier, skuggor, knappform, typografisk känsla och headerbehandling skiljer sig mellan exemplen.
 
 ## Testa lokalt
 
@@ -171,3 +188,5 @@ src/geo.js                 Avstånd och signalstyrka
 - v0.7: renare huvudkarta, backup/admin-rad under kartan, tydligare figursignal, mindre zon-språk, fångstavstånd som slider och tillfälligt spridningsområde för auto-spridning.
 - v0.8: lokala figurpaket i adminvyn, JSON-mall, bildstöd i samling/detalj/fångstbekräftelse/PixiJS och backup-merge för importerade figurer.
 - v0.9: mobiloptimerad adminombyggnad med promenadlista, promenaddetalj, 35/65-redigeringsvy, tap-to-place, tap-to-move, placeringslista, en-i-taget/alla-direkt och spelomgångs-id.
+- v0.10: slimmad header med två klickbara animerade barnfigurer.
+- v0.11: polerade bildbaserade barnfigurer i Annie-liknande kvalitet samt tillfällig temaväxlare med fem distinkta helsidesteman.

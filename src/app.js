@@ -11,6 +11,8 @@ const ADMIN_SCENARIOS_KEY = 'adminScenarios';
 const ACTIVE_SCENARIO_KEY = 'activeScenarioId';
 const ACTIVE_WALK_KEY = 'activeWalk';
 const SCENARIO_SOURCE = 'scenario';
+const THEME_KEY = 'geocritter.theme.v0.11';
+const THEME_CHOICES = ['lens', 'meadow', 'forest', 'paper', 'neon', 'cosmos'];
 
 const $ = (id) => document.getElementById(id);
 
@@ -2029,12 +2031,38 @@ async function openEncounter() {
   });
 }
 
+function setupThemeSwitcher() {
+  const buttons = Array.from(document.querySelectorAll('[data-theme-choice]'));
+  if (!buttons.length) return;
+
+  const applyTheme = (theme, persist = true) => {
+    const nextTheme = THEME_CHOICES.includes(theme) ? theme : 'lens';
+    document.body.dataset.theme = nextTheme;
+    if (persist) {
+      try { localStorage.setItem(THEME_KEY, nextTheme); } catch (_) { /* localStorage can be unavailable in strict modes. */ }
+    }
+    buttons.forEach((button) => {
+      const isActive = button.dataset.themeChoice === nextTheme;
+      button.classList.toggle('is-active', isActive);
+      button.setAttribute('aria-pressed', String(isActive));
+    });
+  };
+
+  let savedTheme = 'lens';
+  try { savedTheme = localStorage.getItem(THEME_KEY) || 'lens'; } catch (_) { /* noop */ }
+  applyTheme(savedTheme, false);
+
+  buttons.forEach((button) => {
+    button.addEventListener('click', () => applyTheme(button.dataset.themeChoice || 'lens'));
+  });
+}
+
 function wireHeroKids() {
   const buttons = Array.from(document.querySelectorAll('[data-hero-kid]'));
   if (!buttons.length) return;
   const moveSets = {
-    girl: ['is-hop', 'is-wave', 'is-wiggle', 'is-bounce-twist'],
-    boy: ['is-hop', 'is-point', 'is-wiggle', 'is-bounce-twist'],
+    girl: ['is-hop', 'is-wave', 'is-wiggle', 'is-bounce-twist', 'is-scout'],
+    boy: ['is-hop', 'is-point', 'is-wiggle', 'is-bounce-twist', 'is-scout'],
   };
   const allMoves = [...new Set(Object.values(moveSets).flat())];
 
@@ -2053,6 +2081,7 @@ function wireHeroKids() {
 }
 
 function setupEvents() {
+  setupThemeSwitcher();
   wireHeroKids();
   els.locateBtn.addEventListener('click', requestLocation);
   els.spawnHereBtn.addEventListener('click', spawnHere);

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geocritter-lens-v0.10.0';
+const CACHE_NAME = 'geocritter-lens-v0.11.0';
 const APP_SHELL = [
   './',
   './index.html',
@@ -7,6 +7,8 @@ const APP_SHELL = [
   './assets/icon.svg',
   './assets/icon-192.png',
   './assets/icon-512.png',
+  './assets/header/geo-kid-girl.png',
+  './assets/header/geo-kid-boy.png',
   './src/app.js',
   './src/config.js',
   './src/creatures.js',
