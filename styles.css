@@ -1458,3 +1458,336 @@ button.capture:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+/* v0.10: slimmer illustrated GeoCritter hero with two clickable animated kids. */
+.geo-hero {
+  position: relative;
+  min-height: clamp(9rem, 19vw, 13.2rem);
+  overflow: hidden;
+  align-items: stretch;
+  border: 1px solid rgba(124, 201, 255, 0.34);
+  border-radius: clamp(1.2rem, 3vw, 2.2rem);
+  padding: clamp(0.95rem, 2vw, 1.55rem) clamp(1rem, 3vw, 2rem);
+  background:
+    radial-gradient(circle at 82% 34%, rgba(124, 201, 255, 0.18), transparent 17rem),
+    radial-gradient(circle at 16% 100%, rgba(159, 246, 206, 0.16), transparent 13rem),
+    linear-gradient(140deg, rgba(8, 16, 28, 0.98), rgba(13, 27, 45, 0.94) 54%, rgba(6, 13, 24, 0.98));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.05),
+    0 16px 60px rgba(0,0,0,0.32),
+    0 0 34px rgba(124,201,255,0.09);
+}
+.geo-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0.35rem;
+  border-radius: inherit;
+  border: 1px solid rgba(124, 201, 255, 0.08);
+  pointer-events: none;
+}
+.geo-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 6% 74%, rgba(159,246,206,0.8) 0 0.18rem, transparent 0.22rem),
+    radial-gradient(circle at 24% 84%, rgba(124,201,255,0.55) 0 0.11rem, transparent 0.16rem),
+    radial-gradient(circle at 55% 28%, rgba(124,201,255,0.45) 0 0.13rem, transparent 0.18rem),
+    radial-gradient(circle at 89% 30%, rgba(159,246,206,0.35) 0 0.11rem, transparent 0.16rem),
+    linear-gradient(90deg, transparent 0 88%, rgba(124,201,255,0.03) 88% 100%);
+  opacity: 0.72;
+}
+.geo-hero-copy {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  width: min(53%, 37rem);
+  min-height: 100%;
+  gap: 0.45rem;
+}
+.geo-hero-copy h1 {
+  font-size: clamp(2.2rem, 7vw, 5rem);
+  line-height: 0.92;
+  letter-spacing: -0.07em;
+  color: #f8fcff;
+  text-shadow: 0 8px 30px rgba(0,0,0,0.3);
+}
+.geo-hero-copy h1 span {
+  color: var(--accent);
+  text-shadow: 0 0 26px rgba(159,246,206,0.18);
+}
+.hero-tagline {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.5rem, 1.7vw, 1rem);
+  color: var(--accent);
+  font-size: clamp(0.92rem, 2.2vw, 1.22rem);
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 18px rgba(159,246,206,0.22);
+}
+.hero-tagline span {
+  width: clamp(1.8rem, 5vw, 4.2rem);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(159,246,206,0.86));
+}
+.hero-tagline span:last-child { background: linear-gradient(90deg, rgba(159,246,206,0.86), transparent); }
+.geo-install-button {
+  margin-top: 0.18rem;
+  padding: 0.5rem 0.78rem;
+  font-size: 0.82rem;
+  background: rgba(255,255,255,0.07);
+  backdrop-filter: blur(14px);
+}
+.geo-hero-orbit {
+  position: absolute;
+  left: -3.2rem;
+  bottom: -3.8rem;
+  width: clamp(9rem, 20vw, 14rem);
+  aspect-ratio: 1;
+  border: 1px solid rgba(124,201,255,0.18);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 0 0 1.7rem rgba(124,201,255,0.035),
+    inset 0 0 0 3.4rem rgba(124,201,255,0.026),
+    inset 0 0 0 5.1rem rgba(124,201,255,0.02);
+  opacity: 0.9;
+}
+.geo-hero-orbit::after {
+  content: "";
+  position: absolute;
+  left: 62%;
+  top: 35%;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 22px rgba(159,246,206,0.8);
+}
+.geo-hero-path {
+  position: absolute;
+  left: 39%;
+  right: 5%;
+  bottom: 1.5rem;
+  height: 42%;
+  border-bottom: 3px dashed rgba(124,201,255,0.26);
+  border-radius: 50%;
+  transform: rotate(-3deg);
+  opacity: 0.78;
+}
+.geo-hero-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+.hero-kid-button {
+  position: absolute;
+  z-index: 7;
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 1rem;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 14px 18px rgba(0,0,0,0.34));
+  overflow: visible;
+}
+.hero-kid-button:hover,
+.hero-kid-button:focus-visible { background: transparent; transform: translateY(-1px); }
+.hero-kid-button:focus-visible { outline: 3px solid rgba(159,246,206,0.55); outline-offset: 0.24rem; }
+.hero-kid-button--girl {
+  right: clamp(7.1rem, 18vw, 15rem);
+  bottom: clamp(0.25rem, 0.8vw, 0.7rem);
+  width: clamp(5.9rem, 13.3vw, 9.1rem);
+}
+.hero-kid-button--boy {
+  right: clamp(1rem, 4.5vw, 4.4rem);
+  bottom: clamp(0.2rem, 0.75vw, 0.62rem);
+  width: clamp(5.1rem, 11.5vw, 7.8rem);
+}
+.hero-kid { width: 100%; height: auto; display: block; overflow: visible; }
+.kid-character { transform-origin: 50% 96%; animation: hero-kid-idle 4.8s ease-in-out infinite; }
+.hero-kid--boy .kid-character { animation-delay: -1.3s; }
+.kid-shadow { fill: rgba(0,0,0,0.24); }
+.kid-face, .kid-neck, .kid-hand {
+  fill: #f3c6a5;
+  stroke: #151923;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.kid-hair, .kid-hair-front, .kid-hair-back, .kid-hair-boy {
+  stroke: #151923;
+  stroke-width: 3.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.kid-hair-back, .kid-hair-front { fill: #7a452a; }
+.kid-hair-boy { fill: #ffd75e; }
+.kid-hair-strand { fill: none; stroke: #321d16; stroke-width: 2.7; stroke-linecap: round; opacity: 0.68; }
+.kid-headband { fill: none; stroke: #ff8eb6; stroke-width: 4.5; stroke-linecap: round; }
+.kid-hoodie, .kid-shorts, .kid-pack, .kid-phone, .kid-arm, .kid-leg, .kid-shoe, .kid-sock, .kid-pack-strap {
+  stroke: #151923;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.kid-hoodie { stroke-width: 3.4; }
+.kid-hoodie--girl { fill: #f4bf42; }
+.kid-hoodie--boy { fill: #5bbcf0; }
+.kid-shorts { fill: #556742; stroke-width: 3.2; }
+.kid-shorts--boy { fill: #ad8b55; }
+.kid-pack { fill: #d985a7; stroke-width: 3.2; }
+.kid-pack--boy { fill: #4d8c66; }
+.kid-pack-strap { fill: none; stroke-width: 4; }
+.kid-arm, .kid-leg { fill: none; stroke-width: 7; }
+.kid-arm { stroke: #f4bf42; }
+.hero-kid--boy .kid-arm { stroke: #5bbcf0; }
+.kid-leg { stroke: #f3c6a5; }
+.kid-shoe { fill: none; stroke: #f7fbff; stroke-width: 7; }
+.kid-sock { stroke: #f7fbff; stroke-width: 6; }
+.kid-sock-left, .kid-sock-right { fill: none; }
+.kid-phone rect { fill: #63e3c4; stroke-width: 2.5; }
+.kid-phone circle, .kid-phone path { fill: none; stroke: #0b4e51; stroke-width: 2; }
+.kid-eye { transform-box: fill-box; transform-origin: 50% 50%; animation: hero-kid-blink 5.8s ease-in-out infinite; }
+.hero-kid--boy .kid-eye { animation-delay: -2.1s; }
+.kid-eye-white { fill: #fffaf4; stroke: #151923; stroke-width: 1.6; }
+.kid-iris { fill: #59a9d2; stroke: #151923; stroke-width: 0.8; }
+.kid-brow, .kid-nose { fill: none; stroke: #151923; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.kid-cheek { fill: #ef96a1; opacity: 0.62; }
+.kid-mouth { fill: none; stroke: #151923; stroke-width: 4; stroke-linecap: round; }
+.kid-mouth-open { fill: #321923; stroke: #151923; stroke-width: 2.8; }
+.hero-glow-critter {
+  position: absolute;
+  right: clamp(0.8rem, 3.1vw, 3.7rem);
+  top: clamp(1.15rem, 3.2vw, 2.1rem);
+  width: clamp(2.1rem, 5.2vw, 3.75rem);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 35% 34%, #f2fff9 0 8%, transparent 9%),
+    radial-gradient(circle at 64% 34%, #f2fff9 0 8%, transparent 9%),
+    radial-gradient(circle at 50% 66%, rgba(4,44,45,0.7) 0 9%, transparent 10%),
+    #69f3ce;
+  box-shadow: 0 0 22px rgba(105,243,206,0.65), 0 0 56px rgba(124,201,255,0.28);
+  animation: hero-critter-float 3.7s ease-in-out infinite;
+}
+.hero-glow-critter::before,
+.hero-glow-critter::after {
+  content: "";
+  position: absolute;
+  top: -0.35rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #69f3ce;
+  box-shadow: 0 0 14px rgba(105,243,206,0.65);
+}
+.hero-glow-critter::before { left: 0.2rem; }
+.hero-glow-critter::after { right: 0.2rem; }
+.hero-glow-critter span {
+  position: absolute;
+  inset: -45%;
+  border-radius: inherit;
+  background: radial-gradient(circle, rgba(105,243,206,0.28), transparent 62%);
+  animation: hero-critter-pulse 2s ease-in-out infinite;
+}
+.hero-kid-button.is-hop { animation: hero-kid-hop 0.95s cubic-bezier(.18,.9,.27,1) both; }
+.hero-kid-button.is-wiggle .kid-character { animation: hero-kid-wiggle 0.9s cubic-bezier(.2,.82,.22,1) both; }
+.hero-kid-button.is-wave .kid-arm-wave { animation: hero-kid-wave 0.92s ease-in-out both; transform-origin: 91px 83px; }
+.hero-kid-button.is-point .kid-arm-point { animation: hero-kid-point 0.86s ease-in-out both; transform-origin: 88px 70px; }
+.hero-kid-button.is-bounce-twist { animation: hero-kid-bounce-twist 1.05s cubic-bezier(.18,.9,.27,1) both; }
+@keyframes hero-kid-idle {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-0.23rem) rotate(0.7deg); }
+}
+@keyframes hero-kid-blink {
+  0%, 4%, 8%, 62%, 66%, 100% { transform: scaleY(1); }
+  5.2%, 64% { transform: scaleY(0.08); }
+}
+@keyframes hero-kid-hop {
+  0%, 100% { transform: translateY(0) scale(1); }
+  44% { transform: translateY(-1.55rem) scale(1.04, 0.97); }
+  68% { transform: translateY(0.16rem) scale(0.97, 1.035); }
+}
+@keyframes hero-kid-bounce-twist {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  32% { transform: translateY(-1rem) rotate(-5deg); }
+  58% { transform: translateY(-0.25rem) rotate(6deg); }
+  78% { transform: translateY(0.1rem) rotate(-2deg); }
+}
+@keyframes hero-kid-wiggle {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  20% { transform: rotate(-7deg) translateY(-0.25rem); }
+  40% { transform: rotate(7deg) translateY(0.1rem); }
+  60% { transform: rotate(-5deg) translateY(-0.15rem); }
+  80% { transform: rotate(4deg); }
+}
+@keyframes hero-kid-wave {
+  0%, 100% { transform: rotate(0deg); }
+  22% { transform: rotate(-22deg); }
+  44% { transform: rotate(17deg); }
+  66% { transform: rotate(-18deg); }
+  84% { transform: rotate(10deg); }
+}
+@keyframes hero-kid-point {
+  0%, 100% { transform: rotate(0deg) translateX(0); }
+  35% { transform: rotate(-9deg) translateX(0.2rem); }
+  62% { transform: rotate(7deg) translateX(-0.08rem); }
+}
+@keyframes hero-critter-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-0.5rem) scale(1.04); }
+}
+@keyframes hero-critter-pulse {
+  0%, 100% { transform: scale(0.86); opacity: 0.45; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kid-character, .kid-eye, .hero-glow-critter, .hero-glow-critter span { animation: none; }
+  .hero-kid-button.is-hop,
+  .hero-kid-button.is-bounce-twist,
+  .hero-kid-button.is-wiggle .kid-character,
+  .hero-kid-button.is-wave .kid-arm-wave,
+  .hero-kid-button.is-point .kid-arm-point { animation: none; }
+}
+@media (max-width: 860px) {
+  .geo-hero {
+    min-height: clamp(8.2rem, 31vw, 11rem);
+    padding: 0.85rem 0.9rem;
+  }
+  .geo-hero-copy { width: 54%; }
+  .geo-hero-copy h1 { font-size: clamp(2rem, 9vw, 3.7rem); }
+  .hero-tagline { font-size: clamp(0.72rem, 3.1vw, 1rem); letter-spacing: 0.07em; }
+  .hero-tagline span { width: clamp(1rem, 4vw, 2.2rem); }
+  .hero-kid-button--girl { right: clamp(5.3rem, 17vw, 8.5rem); width: clamp(4.9rem, 18vw, 6.7rem); }
+  .hero-kid-button--boy { right: clamp(0.55rem, 3.6vw, 1.8rem); width: clamp(4.15rem, 15.5vw, 5.9rem); }
+  .hero-glow-critter { top: 0.78rem; right: clamp(0.6rem, 4vw, 2.2rem); }
+}
+@media (max-width: 520px) {
+  .geo-hero {
+    min-height: 8.6rem;
+    border-radius: 1.35rem;
+  }
+  .geo-hero-copy { width: 58%; gap: 0.28rem; }
+  .geo-hero-copy .eyebrow { font-size: 0.6rem; }
+  .geo-hero-copy h1 { font-size: clamp(1.9rem, 12vw, 2.75rem); }
+  .hero-tagline { font-size: 0.68rem; }
+  .geo-install-button { padding: 0.38rem 0.62rem; font-size: 0.72rem; }
+  .geo-hero-path { left: 28%; opacity: 0.42; }
+  .hero-kid-button--girl { right: 4.3rem; width: 4.9rem; }
+  .hero-kid-button--boy { right: 0.4rem; width: 4.2rem; }
+  .hero-glow-critter { width: 1.75rem; }
+}
+@media (max-width: 370px) {
+  .hero-tagline span { display: none; }
+  .hero-kid-button--girl { right: 3.55rem; width: 4.45rem; }
+  .hero-kid-button--boy { width: 3.75rem; }
+  .geo-hero-copy { width: 60%; }
+}

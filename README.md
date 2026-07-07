@@ -15,6 +15,7 @@ En liten, statisk PWA-prototyp för geoplacerad figurjakt. Projektet är byggt f
 - Samlingskort med samma figuridentitet som i kamerafångsten
 - Detaljvy för tidigare fångster med karta
 - Dold, mobiloptimerad adminvy för att bygga och aktivera promenader
+- Slimmad, illustrerad header med två klickbara animerade barnfigurer
 - Lokala figurpaket med egna namn, beskrivningar och bildfiler
 
 ## Testa lokalt

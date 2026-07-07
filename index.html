@@ -17,12 +17,91 @@
 </head>
 <body>
   <div id="app" class="app-shell">
-    <header class="topbar">
-      <div>
+    <header class="topbar geo-hero" aria-labelledby="site-title">
+      <div class="geo-hero-orbit" aria-hidden="true"></div>
+      <div class="geo-hero-path" aria-hidden="true"></div>
+      <div class="geo-hero-copy">
         <p class="eyebrow">PWA-prototyp</p>
-        <h1>GeoCritter Lens</h1>
+        <h1 id="site-title"><span>Geo</span>Critter</h1>
+        <p class="hero-tagline"><span></span>Gå, hitta, fånga<span></span></p>
+        <button id="installBtn" class="ghost geo-install-button hidden" type="button">Installera</button>
       </div>
-      <button id="installBtn" class="ghost hidden" type="button">Installera</button>
+
+      <div class="geo-hero-stage" aria-label="GeoCritter-figurer">
+        <button class="hero-kid-button hero-kid-button--girl" type="button" data-hero-kid="girl" aria-label="Animera flickan">
+          <svg class="hero-kid hero-kid--girl" viewBox="0 0 132 188" role="img" aria-labelledby="heroGirlTitle">
+            <title id="heroGirlTitle">Längre brunhårig flicka med ryggsäck och scanner</title>
+            <ellipse class="kid-shadow" cx="65" cy="177" rx="42" ry="7" />
+            <g class="kid-character kid-girl-character">
+              <path class="kid-hair kid-hair-back" d="M36 52c-19 21-19 71-4 105 12-7 30-23 39-48 9 20 24 36 43 42 10-42-3-90-33-109-16-10-33-8-45 10Z" />
+              <path class="kid-leg" d="M54 129v32" />
+              <path class="kid-leg" d="M80 129v32" />
+              <path class="kid-sock kid-sock-left" d="M49 151h13" />
+              <path class="kid-sock kid-sock-right" d="M75 151h13" />
+              <path class="kid-shoe kid-shoe-left" d="M43 166c8 3 19 3 25-1" />
+              <path class="kid-shoe kid-shoe-right" d="M72 166c9 3 21 3 28-1" />
+              <path class="kid-shorts" d="M46 110h43l-5 27H52Z" />
+              <path class="kid-hoodie kid-hoodie--girl" d="M42 75c5-16 44-17 51 0l8 40c-13 11-55 12-68 0Z" />
+              <path class="kid-pack-strap" d="M42 78c-11 9-18 23-16 38" />
+              <path class="kid-pack" d="M29 84c-14 15-14 38 0 48" />
+              <path class="kid-arm kid-arm-left" d="M43 85c-13 10-16 25-11 39" />
+              <path class="kid-arm kid-arm-right kid-arm-wave" d="M91 83c12 4 18 15 20 27" />
+              <g class="kid-phone">
+                <rect x="96" y="98" width="18" height="27" rx="4" />
+                <circle cx="105" cy="110" r="5" />
+                <path d="M100 119h10" />
+              </g>
+              <circle class="kid-neck" cx="67" cy="71" r="8" />
+              <circle class="kid-face" cx="66" cy="49" r="29" />
+              <path class="kid-hair kid-hair-front" d="M35 51c14-30 59-33 75 4-23-8-43-8-74 7Z" />
+              <path class="kid-hair-strand" d="M51 30c-4 18-11 27-22 35" />
+              <path class="kid-headband" d="M38 43c19-15 42-17 65-1" />
+              <g class="kid-eye kid-eye-left"><ellipse class="kid-eye-white" cx="56" cy="50" rx="6" ry="8" /><circle class="kid-iris" cx="57" cy="51" r="3" /></g>
+              <g class="kid-eye kid-eye-right"><ellipse class="kid-eye-white" cx="77" cy="50" rx="6" ry="8" /><circle class="kid-iris" cx="76" cy="51" r="3" /></g>
+              <path class="kid-brow" d="M50 39c5-3 10-3 14 0" />
+              <path class="kid-brow" d="M72 39c5-2 10-2 14 1" />
+              <circle class="kid-cheek" cx="45" cy="59" r="5" />
+              <circle class="kid-cheek" cx="88" cy="59" r="5" />
+              <path class="kid-nose" d="M66 50l-3 8 5 1" />
+              <path class="kid-mouth" d="M53 67c9 12 25 12 35-1" />
+            </g>
+          </svg>
+        </button>
+
+        <button class="hero-kid-button hero-kid-button--boy" type="button" data-hero-kid="boy" aria-label="Animera pojken">
+          <svg class="hero-kid hero-kid--boy" viewBox="0 0 126 170" role="img" aria-labelledby="heroBoyTitle">
+            <title id="heroBoyTitle">Kortare blond pojke som pekar mot en lysande figur</title>
+            <ellipse class="kid-shadow" cx="62" cy="159" rx="39" ry="7" />
+            <g class="kid-character kid-boy-character">
+              <path class="kid-leg" d="M52 118l-16 27" />
+              <path class="kid-leg" d="M76 118l17 24" />
+              <path class="kid-shoe kid-shoe-left" d="M27 149c9 3 20 2 27-3" />
+              <path class="kid-shoe kid-shoe-right" d="M86 147c8 5 20 6 29 2" />
+              <path class="kid-shorts kid-shorts--boy" d="M42 101h48l-7 25H50Z" />
+              <path class="kid-pack kid-pack--boy" d="M38 69c-17 17-18 45 0 58" />
+              <path class="kid-hoodie kid-hoodie--boy" d="M37 61c11-13 44-14 55 1 9 13 10 31 2 47-14 8-46 8-61-1-8-16-7-34 4-47Z" />
+              <path class="kid-arm kid-arm-left" d="M43 74c-14 2-22 13-23 27" />
+              <path class="kid-arm kid-arm-right kid-arm-point" d="M88 70c15-2 26-12 33-27" />
+              <path class="kid-hand" d="M118 42l8-8" />
+              <circle class="kid-neck" cx="65" cy="58" r="7" />
+              <circle class="kid-face" cx="65" cy="38" r="27" />
+              <path class="kid-hair kid-hair-boy" d="M41 29c1-24 34-34 57-13-11-1-13 1-20 4 13 0 22 8 25 18-21-12-45-9-65 4Z" />
+              <g class="kid-eye kid-eye-left"><ellipse class="kid-eye-white" cx="56" cy="39" rx="6" ry="8" /><circle class="kid-iris" cx="57" cy="40" r="3" /></g>
+              <g class="kid-eye kid-eye-right"><ellipse class="kid-eye-white" cx="77" cy="38" rx="6" ry="8" /><circle class="kid-iris" cx="78" cy="39" r="3" /></g>
+              <path class="kid-brow" d="M48 27c5-4 10-5 15-2" />
+              <path class="kid-brow" d="M72 26c6-2 12-1 16 3" />
+              <circle class="kid-cheek" cx="45" cy="49" r="5" />
+              <circle class="kid-cheek" cx="87" cy="48" r="5" />
+              <path class="kid-nose" d="M65 39l-3 8 5 1" />
+              <path class="kid-mouth kid-mouth-open" d="M52 55c9 13 26 14 35 0-10 5-24 5-35 0Z" />
+            </g>
+          </svg>
+        </button>
+
+        <div class="hero-glow-critter" aria-hidden="true">
+          <span></span>
+        </div>
+      </div>
     </header>
 
     <main class="layout">

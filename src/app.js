@@ -6,6 +6,7 @@ import { distanceMeters, formatDistance, signalFromDistance, randomOffsetLatLng 
 import { EncounterController } from './encounter.js';
 
 const ADMIN_PASSWORD = 'AdmiN';
+const reducedMotionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 const ADMIN_SCENARIOS_KEY = 'adminScenarios';
 const ACTIVE_SCENARIO_KEY = 'activeScenarioId';
 const ACTIVE_WALK_KEY = 'activeWalk';
@@ -2028,7 +2029,31 @@ async function openEncounter() {
   });
 }
 
+function wireHeroKids() {
+  const buttons = Array.from(document.querySelectorAll('[data-hero-kid]'));
+  if (!buttons.length) return;
+  const moveSets = {
+    girl: ['is-hop', 'is-wave', 'is-wiggle', 'is-bounce-twist'],
+    boy: ['is-hop', 'is-point', 'is-wiggle', 'is-bounce-twist'],
+  };
+  const allMoves = [...new Set(Object.values(moveSets).flat())];
+
+  buttons.forEach((button) => {
+    button.addEventListener('click', () => {
+      if (reducedMotionQuery?.matches) return;
+      allMoves.forEach((move) => button.classList.remove(move));
+      const kid = button.dataset.heroKid || 'girl';
+      const moves = moveSets[kid] || moveSets.girl;
+      const move = moves[Math.floor(Math.random() * moves.length)];
+      void button.offsetWidth;
+      button.classList.add(move);
+      window.setTimeout(() => button.classList.remove(move), 1250);
+    });
+  });
+}
+
 function setupEvents() {
+  wireHeroKids();
   els.locateBtn.addEventListener('click', requestLocation);
   els.spawnHereBtn.addEventListener('click', spawnHere);
   els.simulateBtn.addEventListener('click', simulateNear);
